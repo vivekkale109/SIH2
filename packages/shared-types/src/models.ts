@@ -85,6 +85,24 @@ export interface DocumentVersionSummary {
   mimeType: string;
   uploadedById: string;
   createdAt: string;
+  uploadedBy?: UserSummary;
+}
+
+export interface DocumentDetailSummary extends DocumentSummary {
+  case?: CaseSummary;
+  createdBy?: UserSummary;
+  currentVersion?: DocumentVersionSummary;
+  versions: DocumentVersionSummary[];
+}
+
+export interface DocumentIntegrityResult {
+  verified: boolean;
+  documentId: string;
+  versionNo: number;
+  storedHash: string;
+  computedHash: string;
+  verifiedAt: string;
+  tampered: boolean;
 }
 
 export interface ShareGrantSummary {
