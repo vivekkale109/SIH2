@@ -115,15 +115,15 @@
 
 **Tasks**
 
-- [ ] MinIO storage adapter (SSE enabled, bucket policies)
-- [ ] Upload endpoint with type/size validation and streaming
-- [ ] ClamAV scan; quarantine flow
-- [ ] SHA-256 computation; store on `DocumentVersion`
-- [ ] Models: `Document`, `DocumentVersion`
-- [ ] New-version upload (never overwrite); version history endpoint
-- [ ] "Verify integrity" endpoint (re-hash from storage and compare)
-- [ ] Secure download (signed short-lived URL or streamed via API) plus ledger entry
-- [ ] UI: upload with progress, document list, version history, verify button
+- [x] MinIO storage adapter (SSE enabled, bucket policies)
+- [x] Upload endpoint with type/size validation and streaming
+- [x] ClamAV scan; quarantine flow
+- [x] SHA-256 computation; store on `DocumentVersion`
+- [x] Models: `Document`, `DocumentVersion`
+- [x] New-version upload (never overwrite); version history endpoint
+- [x] "Verify integrity" endpoint (re-hash from storage and compare)
+- [x] Secure download (signed short-lived URL or streamed via API) plus ledger entry
+- [x] UI: upload with progress, document list, version history, verify button
 
 **Exit criteria**
 
