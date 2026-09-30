@@ -6,6 +6,7 @@ import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
+import { AuditModule } from './modules/audit/audit.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { DepartmentsModule } from './modules/departments/departments.module';
     }),
     PrismaModule,
     HealthModule,
+    AuditModule,
     AuthModule,
     UsersModule,
     DepartmentsModule,
