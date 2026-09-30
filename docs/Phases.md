@@ -94,13 +94,13 @@
 
 **Tasks**
 
-- [ ] Models: `Case`, `CaseMember`
-- [ ] CRUD for cases; status lifecycle (Open → Under Review → Closed → Archived)
-- [ ] Assign members with case-level roles
-- [ ] `PolicyGuard` (ABAC): department, case membership, classification level, time window
-- [ ] Classification levels: Public, Restricted, Confidential, Secret (configurable)
-- [ ] Ledger events for all case actions
-- [ ] UI: case list, case detail, create/edit case, member management
+- [x] Models: `Case`, `CaseMember`
+- [x] CRUD for cases; status lifecycle (Open → Under Review → Closed → Archived)
+- [x] Assign members with case-level roles
+- [x] `PolicyGuard` (ABAC): department, case membership, classification level, time window
+- [x] Classification levels: Public, Restricted, Confidential, Secret (configurable)
+- [x] Ledger events for all case actions
+- [x] UI: case list, case detail, create/edit case, member management
 
 **Exit criteria**
 

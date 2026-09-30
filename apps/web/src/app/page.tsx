@@ -15,6 +15,8 @@ import {
   QrCode,
   KeyRound,
   FileCheck,
+  Briefcase,
+  ScrollText,
 } from 'lucide-react';
 import { ClassificationBadge, Badge } from '@/components/ui/Badge';
 import { ClassificationLevel } from '@sdms/shared-types';
@@ -61,7 +63,7 @@ export default function HomePage() {
         <div>
           <div className="flex items-center space-x-2">
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-success/15 text-success font-mono uppercase">
-              Phase 1 Active
+              Phase 3 Operational
             </span>
             <span className="text-xs text-muted">• Smart India Hackathon 2026 (PS ID 26190)</span>
           </div>
@@ -75,7 +77,7 @@ export default function HomePage() {
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="success" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
-            MFA & RBAC Operational
+            ABAC & Ledger Active
           </Badge>
         </div>
       </div>
@@ -109,18 +111,25 @@ export default function HomePage() {
 
           <div className="flex items-center space-x-2 shrink-0">
             <Link
+              href="/cases"
+              className="inline-flex items-center space-x-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-colors"
+            >
+              <Briefcase className="w-3.5 h-3.5" />
+              <span>Browse Cases</span>
+            </Link>
+            <Link
+              href="/audit"
+              className="inline-flex items-center space-x-1.5 bg-surface hover:bg-surface-alt border border-border text-text text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <ScrollText className="w-3.5 h-3.5 text-primary" />
+              <span>Audit Ledger</span>
+            </Link>
+            <Link
               href="/mfa"
               className="inline-flex items-center space-x-1.5 bg-surface hover:bg-surface-alt border border-border text-text text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
             >
               <QrCode className="w-3.5 h-3.5 text-primary" />
-              <span>Configure 2FA</span>
-            </Link>
-            <Link
-              href="/users"
-              className="inline-flex items-center space-x-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-colors"
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>Manage RBAC</span>
+              <span>2FA</span>
             </Link>
           </div>
         </div>
@@ -224,11 +233,11 @@ export default function HomePage() {
             Up Next
           </span>
           <h3 className="text-base font-bold text-text mt-0.5">
-            Phase 2: Append-Only Hash-Chained Audit Ledger
+            Phase 4: Secure Document Upload & Versioning
           </h3>
           <p className="text-xs text-muted mt-1">
-            Canonical JSON hashing, SHA-256 hash chaining, gapless monotonic sequences, and
-            verify-chain endpoint.
+            MinIO encrypted object storage, ClamAV anti-malware streaming scan, SHA-256 integrity
+            digests, and immutable document versioning.
           </p>
         </div>
         <a

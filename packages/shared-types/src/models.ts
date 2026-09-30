@@ -54,6 +54,12 @@ export interface CaseMemberSummary {
   user?: UserSummary;
 }
 
+export interface CaseDetailSummary extends CaseSummary {
+  department?: DepartmentSummary;
+  createdBy?: UserSummary;
+  members: CaseMemberSummary[];
+}
+
 export interface DocumentSummary {
   id: string;
   caseId: string;

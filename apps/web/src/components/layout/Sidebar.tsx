@@ -40,9 +40,9 @@ export const Sidebar: React.FC = () => {
       case UserRole.ADMIN:
         return [
           { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
+          { label: 'Cases & Records', icon: Briefcase, href: '/cases', badge: 'Phase 3' },
           { label: 'Users & RBAC', icon: Users, href: '/users', badge: 'Admin' },
           { label: 'Departments', icon: Building2, href: '/departments' },
-          { label: 'ABAC Policies', icon: ShieldAlert, href: '/policies', badge: 'Phase 3' },
           { label: 'Audit Ledger', icon: ScrollText, href: '/audit', badge: 'Phase 2' },
           { label: 'System Settings', icon: Settings, href: '/settings' },
         ];
@@ -70,6 +70,7 @@ export const Sidebar: React.FC = () => {
       case UserRole.RECORDS_MANAGER:
         return [
           { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
+          { label: 'Cases Archive', icon: Briefcase, href: '/cases', badge: 'Phase 3' },
           { label: 'Records Vault', icon: Archive, href: '/records', badge: 'Phase 4' },
           { label: 'Retention Policies', icon: Clock, href: '/retention', badge: 'Phase 8' },
           { label: 'Classification Rules', icon: Layers, href: '/classification' },
@@ -78,6 +79,7 @@ export const Sidebar: React.FC = () => {
         return [
           { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
           { label: 'Audit Log Ledger', icon: ScrollText, href: '/audit', badge: 'Phase 2' },
+          { label: 'Case Inspection', icon: Briefcase, href: '/cases', badge: 'Phase 3' },
           {
             label: 'Chain Integrity Report',
             icon: ShieldAlert,
