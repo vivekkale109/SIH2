@@ -1,6 +1,14 @@
 import 'reflect-metadata';
-import { plainToInstance } from 'class-transformer';
-import { IsEnum, IsNumber, IsOptional, IsString, Min, validateSync } from 'class-validator';
+import { Transform, plainToInstance } from 'class-transformer';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  validateSync,
+} from 'class-validator';
 
 export enum Environment {
   Development = 'development',
@@ -49,6 +57,32 @@ export class EnvironmentVariables {
   @IsOptional()
   MINIO_BUCKET: string = 'sdms-documents';
 
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true || value === '1' || value === 1) return true;
+    if (value === 'false' || value === false || value === '0' || value === 0) return false;
+    return Boolean(value);
+  })
+  @IsBoolean()
+  @IsOptional()
+  MINIO_USE_SSL: boolean = false;
+
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true || value === '1' || value === 1) return true;
+    if (value === 'false' || value === false || value === '0' || value === 0) return false;
+    return Boolean(value);
+  })
+  @IsBoolean()
+  @IsOptional()
+  MINIO_SSE_ENABLED: boolean = false;
+
+  @IsString()
+  @IsOptional()
+  CLAMAV_HOST: string = 'localhost';
+
+  @IsNumber()
+  @IsOptional()
+  CLAMAV_PORT: number = 3310;
+
   @IsString()
   @IsOptional()
   JWT_SECRET: string = 'dev-jwt-secret-replace-in-production-min-32-chars';
@@ -59,7 +93,15 @@ export class EnvironmentVariables {
 }
 
 export function validate(config: Record<string, unknown>): EnvironmentVariables {
-  const validatedConfig = plainToInstance(EnvironmentVariables, config, {
+  const normalizedConfig = { ...config };
+  for (const key of ['MINIO_USE_SSL', 'MINIO_SSE_ENABLED']) {
+    if (normalizedConfig[key] !== undefined) {
+      const val = normalizedConfig[key];
+      normalizedConfig[key] = val === true || val === 'true' || val === '1' || val === 1;
+    }
+  }
+
+  const validatedConfig = plainToInstance(EnvironmentVariables, normalizedConfig, {
     enableImplicitConversion: true,
   });
 

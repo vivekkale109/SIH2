@@ -25,31 +25,31 @@
 
 ## 2. Current Status
 
-| Item                    | Value                                                                                                         |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Current phase**       | Phase 3 — Case Management and ABAC (Completed, ready for Phase 4)                                             |
-| **Current branch**      | `feature/phase-3-cases-abac`                                                                                  |
-| **Last completed task** | Complete Phase 3 implementation (Cases CRUD, ABAC PolicyService & PolicyGuard, lifecycle, members, UI, tests) |
-| **In progress**         | Finalize Phase 3 PR, tag v0.4.0, initiate Phase 4 (Secure Document Upload and Versioning)                     |
-| **Blocked by**          | _nothing_                                                                                                     |
-| **Last updated**        | 2026-09-30 by Antigravity                                                                                     |
+| Item                    | Value                                                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Current phase**       | Phase 4 — Secure Document Upload and Versioning (Completed, ready for Phase 5)                                           |
+| **Current branch**      | `feature/phase-4-upload-versioning`                                                                                      |
+| **Last completed task** | Complete Phase 4 implementation (MinIO SSE, ClamAV malware scan, SHA-256 integrity, monotonic versioning, UI, and tests) |
+| **In progress**         | Finalize Phase 4 PR, tag v0.5.0, initiate Phase 5 (OCR, Classification and Search)                                       |
+| **Blocked by**          | _nothing_                                                                                                                |
+| **Last updated**        | 2026-09-30 by Antigravity                                                                                                |
 
 ---
 
 ## 3. Phase Tracker
 
-| Phase | Name                         | Status         | Branch                         | Tag      | Completed  |
-| ----- | ---------------------------- | -------------- | ------------------------------ | -------- | ---------- |
-| 0     | Setup and Foundation         | ✅ Done        | `feature/phase-0-setup`        | `v0.1.0` | 2026-09-30 |
-| 1     | Auth, MFA, RBAC              | ✅ Done        | `feature/phase-1-auth-rbac`    | `v0.2.0` | 2026-09-30 |
-| 2     | Audit Ledger                 | ✅ Done        | `feature/phase-2-audit-ledger` | `v0.3.0` | 2026-09-30 |
-| 3     | Cases and ABAC               | ✅ Done        | `feature/phase-3-cases-abac`   | `v0.4.0` | 2026-09-30 |
-| 4     | Upload and Versioning        | ⬜ Not started |                                |          |            |
-| 5     | OCR, Classification, Search  | ⬜ Not started |                                |          |            |
-| 6     | Sharing and Watermarking     | ⬜ Not started |                                |          |            |
-| 7     | Signed Exports and Verifier  | ⬜ Not started |                                |          |            |
-| 8     | Dashboards, Audit UI, Polish | ⬜ Not started |                                |          |            |
-| 9     | Hardening and Demo           | ⬜ Not started |                                |          |            |
+| Phase | Name                         | Status         | Branch                              | Tag      | Completed  |
+| ----- | ---------------------------- | -------------- | ----------------------------------- | -------- | ---------- |
+| 0     | Setup and Foundation         | ✅ Done        | `feature/phase-0-setup`             | `v0.1.0` | 2026-09-30 |
+| 1     | Auth, MFA, RBAC              | ✅ Done        | `feature/phase-1-auth-rbac`         | `v0.2.0` | 2026-09-30 |
+| 2     | Audit Ledger                 | ✅ Done        | `feature/phase-2-audit-ledger`      | `v0.3.0` | 2026-09-30 |
+| 3     | Cases and ABAC               | ✅ Done        | `feature/phase-3-cases-abac`        | `v0.4.0` | 2026-09-30 |
+| 4     | Upload and Versioning        | ✅ Done        | `feature/phase-4-upload-versioning` | `v0.5.0` | 2026-09-30 |
+| 5     | OCR, Classification, Search  | ⬜ Not started |                                     |          |            |
+| 6     | Sharing and Watermarking     | ⬜ Not started |                                     |          |            |
+| 7     | Signed Exports and Verifier  | ⬜ Not started |                                     |          |            |
+| 8     | Dashboards, Audit UI, Polish | ⬜ Not started |                                     |          |            |
+| 9     | Hardening and Demo           | ⬜ Not started |                                     |          |            |
 
 Legend: ⬜ Not started · 🟨 In progress · ✅ Done · ⛔ Blocked
 
@@ -57,17 +57,18 @@ Legend: ⬜ Not started · 🟨 In progress · ✅ Done · ⛔ Blocked
 
 ## 4. Key Decisions (Decision Log)
 
-| #   | Date       | Decision                                    | Reason                                                                          | Alternatives                                            |
-| --- | ---------- | ------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| D1  | _2026_     | Modular monolith (NestJS)                   | Simple pilot deployment, clear boundaries                                       | Microservices (too heavy for unit-level)                |
-| D2  | _2026_     | "Blockchain" = internal hash-chained ledger | Tamper-evidence without a public chain                                          | Public blockchain (out of scope)                        |
-| D3  | _2026_     | PostgreSQL FTS for search initially         | Fewer moving parts                                                              | OpenSearch/Meilisearch later                            |
-| D4  | _2026_     | Rule-based classification first             | Limited labeled data                                                            | ML models later via a pluggable interface               |
-| D5  | _2026_     | Redis + BullMQ for jobs _(assumption)_      | Mature and simple                                                               | RabbitMQ                                                |
-| D6  | _2026_     | ClamAV for malware scan _(assumption)_      | Open source, self-hosted                                                        | Commercial AV                                           |
-| D7  | _2026_     | Ed25519 for export signing _(assumption)_   | Small, fast, modern                                                             | RSA-PSS                                                 |
-| D8  | 2026-09-30 | MinIO API mapped to host port 9002          | Avoid conflict with existing local services on 9000 (Portainer)                 | Stop existing service                                   |
-| D9  | 2026-09-30 | ABAC Policy evaluation model                | Case-level clearance via department, role, direct assignment, and active shares | Pure RBAC (insufficient for multi-department isolation) |
+| #   | Date       | Decision                                    | Reason                                                                           | Alternatives                                            |
+| --- | ---------- | ------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| D1  | _2026_     | Modular monolith (NestJS)                   | Simple pilot deployment, clear boundaries                                        | Microservices (too heavy for unit-level)                |
+| D2  | _2026_     | "Blockchain" = internal hash-chained ledger | Tamper-evidence without a public chain                                           | Public blockchain (out of scope)                        |
+| D3  | _2026_     | PostgreSQL FTS for search initially         | Fewer moving parts                                                               | OpenSearch/Meilisearch later                            |
+| D4  | _2026_     | Rule-based classification first             | Limited labeled data                                                             | ML models later via a pluggable interface               |
+| D5  | _2026_     | Redis + BullMQ for jobs _(assumption)_      | Mature and simple                                                                | RabbitMQ                                                |
+| D6  | _2026_     | ClamAV for malware scan _(assumption)_      | Open source, self-hosted                                                         | Commercial AV                                           |
+| D7  | _2026_     | Ed25519 for export signing _(assumption)_   | Small, fast, modern                                                              | RSA-PSS                                                 |
+| D8  | 2026-09-30 | MinIO API mapped to host port 9002          | Avoid conflict with existing local services on 9000 (Portainer)                  | Stop existing service                                   |
+| D9  | 2026-09-30 | ABAC Policy evaluation model                | Case-level clearance via department, role, direct assignment, and active shares  | Pure RBAC (insufficient for multi-department isolation) |
+| D10 | 2026-09-30 | Append-only document versioning with ClamAV | Prevent overwrites; compute SHA-256 on byte streams; detect EICAR virus patterns | Overwriting files in storage                            |
 
 > Add new decisions at the bottom. Never delete old ones. Mark superseded ones instead.
 
@@ -119,6 +120,27 @@ Legend: ⬜ Not started · 🟨 In progress · ✅ Done · ⛔ Blocked
 - Next steps:
 - Notes for next session:
 ```
+
+### 2026-09-30 — Phase 4 Secure Document Upload and Versioning Implementation
+
+- Phase / Branch: Phase 4 / `feature/phase-4-upload-versioning`
+- Done:
+  - Implemented MinIO S3 object storage adapter (`StorageService`) with bucket initialization, stream upload/download, SHA-256 calculation, and AES-256 SSE encryption support
+  - Integrated ClamAV antivirus scanner (`ClamavService`) with clamd socket stream protocol, automatic quarantine audit logging, and built-in deterministic EICAR test signature detection
+  - Built document service and endpoints (`DocumentsService`, `DocumentsController`, `CaseDocumentsController`): initial upload with 50MB limit, MIME type whitelist, SHA-256 hashing, and ABAC clearance checks
+  - Enforced monotonic append-only versioning (`uploadNewVersion`) ensuring evidence files are never overwritten and previous revisions remain permanently preserved
+  - Built real-time cryptographic integrity verifier (`verifyIntegrity`, `POST /api/v1/documents/:id/verify`) comparing live storage bytes directly with the audit ledger seal and emitting `DOCUMENT_INTEGRITY_VERIFIED` / `DOCUMENT_INTEGRITY_FAILED` events
+  - Built streaming secure file download (`GET /api/v1/documents/:id/download`) logging `DOCUMENT_DOWNLOADED` ledger entries
+  - Developed full frontend interface:
+    - `/upload`: Drag-and-drop evidence ingestion portal with ClamAV scan progress indicator, auto-naming, SHA-256 seal receipt, and `?caseId=...` query param support
+    - `/cases/[id]`: Full Evidence Documents tab and Overview preview with live integrity verification modal, version history inspector modal, download action, and new revision modal
+    - Dashboard & Sidebar: Added quick action for evidence ingestion and updated Phase 4 operational status
+  - Authored comprehensive test suites: 12 unit test suites (78 tests) and 5 e2e test suites (43 tests) covering infected EICAR rejection, integrity verification, monotonic revisioning, and archived immutability
+- Files touched: `apps/api/src/modules/storage/*`, `apps/api/src/modules/documents/*`, `apps/api/test/documents.e2e-spec.ts`, `packages/shared-types/src/models.ts`, `apps/web/src/app/upload/*`, `apps/web/src/app/cases/[id]/*`, `apps/web/src/app/page.tsx`, `apps/web/src/components/layout/Sidebar.tsx`, `docs/Phases.md`, `docs/Memory.md`
+- Decisions: D10 — Append-only document versioning with ClamAV malware scanning, streaming SHA-256 hashing, and live MinIO verification.
+- Tests: Unit tests (78/78 pass), e2e tests (43/43 pass), lint (0 errors/warnings), full monorepo build (pass)
+- Next steps: Merge `feature/phase-4-upload-versioning` into `develop`, tag `v0.5.0`, and start Phase 5 (OCR, Classification and Search with BullMQ, Tesseract, and PostgreSQL FTS).
+- Notes for next session: Phase 5 will implement async job processing with Redis and BullMQ, Tesseract OCR on ingested documents, rule-based classification, and full-text search with ABAC filters.
 
 ### 2026-09-30 — Phase 3 Case Management and ABAC Implementation
 

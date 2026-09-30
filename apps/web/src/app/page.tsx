@@ -17,6 +17,7 @@ import {
   FileCheck,
   Briefcase,
   ScrollText,
+  Upload,
 } from 'lucide-react';
 import { ClassificationBadge, Badge } from '@/components/ui/Badge';
 import { ClassificationLevel } from '@sdms/shared-types';
@@ -63,7 +64,7 @@ export default function HomePage() {
         <div>
           <div className="flex items-center space-x-2">
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-success/15 text-success font-mono uppercase">
-              Phase 3 Operational
+              Phase 4 Operational
             </span>
             <span className="text-xs text-muted">• Smart India Hackathon 2026 (PS ID 26190)</span>
           </div>
@@ -77,7 +78,7 @@ export default function HomePage() {
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="success" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
-            ABAC & Ledger Active
+            MinIO SSE & SHA-256 Active
           </Badge>
         </div>
       </div>
@@ -109,13 +110,20 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 shrink-0">
+          <div className="flex items-center space-x-2 shrink-0 flex-wrap">
             <Link
               href="/cases"
               className="inline-flex items-center space-x-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-colors"
             >
               <Briefcase className="w-3.5 h-3.5" />
               <span>Browse Cases</span>
+            </Link>
+            <Link
+              href="/upload"
+              className="inline-flex items-center space-x-1.5 bg-surface hover:bg-surface-alt border border-border text-text text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Upload className="w-3.5 h-3.5 text-primary" />
+              <span>Ingest Evidence</span>
             </Link>
             <Link
               href="/audit"
