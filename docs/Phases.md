@@ -49,16 +49,16 @@
 
 **Tasks**
 
-- [ ] Prisma models: `User`, `Department`, `RefreshToken`
-- [ ] Argon2id password hashing, password policy
-- [ ] Login endpoint, JWT access (15 min) plus rotating refresh token (httpOnly cookie)
-- [ ] TOTP MFA enrollment (QR) and verification
-- [ ] `RolesGuard` and `@Roles()` decorator; roles: Admin, Investigator, Prosecutor, CourtOfficer, RecordsManager, Auditor
-- [ ] Re-auth guard for sensitive actions
-- [ ] Rate limiting and lockout on failed logins
-- [ ] Admin: create/disable users, assign roles and departments
-- [ ] UI: Login page, MFA page, role-based navigation shell
-- [ ] Seed script (fake users for each role)
+- [x] Prisma models: `User`, `Department`, `RefreshToken`
+- [x] Argon2id password hashing, password policy
+- [x] Login endpoint, JWT access (15 min) plus rotating refresh token (httpOnly cookie)
+- [x] TOTP MFA enrollment (QR) and verification
+- [x] `RolesGuard` and `@Roles()` decorator; roles: Admin, Investigator, Prosecutor, CourtOfficer, RecordsManager, Auditor
+- [x] Re-auth guard for sensitive actions
+- [x] Rate limiting and lockout on failed logins
+- [x] Admin: create/disable users, assign roles and departments
+- [x] UI: Login page, MFA page, role-based navigation shell
+- [x] Seed script (fake users for each role)
 
 **Exit criteria**
 

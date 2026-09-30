@@ -1,58 +1,67 @@
+'use client';
+
 import React from 'react';
+import Link from 'next/link';
 import {
   ShieldCheck,
   Server,
   Database,
   HardDrive,
-  FileCheck,
   CheckCircle2,
   Lock,
   Layers,
   ArrowRight,
+  UserCheck,
+  QrCode,
+  KeyRound,
+  FileCheck,
 } from 'lucide-react';
 import { ClassificationBadge, Badge } from '@/components/ui/Badge';
 import { ClassificationLevel } from '@sdms/shared-types';
+import { useAuth } from '@/context/AuthContext';
 
 export default function HomePage() {
+  const { user } = useAuth();
+
   const infraServices = [
     {
       name: 'NestJS Core API',
       port: '4000',
       icon: Server,
       status: 'Online',
-      desc: 'Modular backend with Swagger & ABAC',
+      desc: 'Auth, MFA, Users, Health, and Swagger at /api/docs',
     },
     {
       name: 'PostgreSQL Database',
       port: '5432',
       icon: Database,
-      status: 'Configured',
-      desc: 'Prisma schema & GIN FTS index',
+      status: 'Seeded & Active',
+      desc: 'Users, Departments, Tokens, Audit Ledger schema',
     },
     {
       name: 'MinIO Object Storage',
       port: '9002 / 9001',
       icon: HardDrive,
-      status: 'Configured',
-      desc: 'S3-compatible AES-256 SSE',
+      status: 'Connected',
+      desc: 'S3-compatible AES-256 SSE object store',
     },
     {
       name: 'Redis + BullMQ',
       port: '6379',
       icon: Layers,
-      status: 'Configured',
-      desc: 'Async OCR & classification queues',
+      status: 'Connected',
+      desc: 'Async worker queue backend for OCR and hashing',
     },
   ];
 
   return (
     <div className="space-y-8">
       {/* Header Banner */}
-      <div className="bg-surface border border-border rounded-lg p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary font-mono uppercase">
-              Phase 0 Foundation
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-success/15 text-success font-mono uppercase">
+              Phase 1 Active
             </span>
             <span className="text-xs text-muted">• Smart India Hackathon 2026 (PS ID 26190)</span>
           </div>
@@ -66,33 +75,91 @@ export default function HomePage() {
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="success" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
-            System Integrity OK
+            MFA & RBAC Operational
           </Badge>
         </div>
       </div>
 
+      {/* Authenticated Persona Banner */}
+      {user && (
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-lg shadow-sm">
+              {user.fullName.charAt(0)}
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-bold text-text">{user.fullName}</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary text-white">
+                  {user.role}
+                </span>
+                {user.mfaEnabled && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-success/20 text-success">
+                    TOTP Active
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted mt-0.5">
+                Badge: <span className="font-mono text-text">{user.badgeNumber || 'N/A'}</span> ·
+                Department: <span className="font-medium text-text">{user.departmentId}</span> ·
+                Email: {user.email}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 shrink-0">
+            <Link
+              href="/mfa"
+              className="inline-flex items-center space-x-1.5 bg-surface hover:bg-surface-alt border border-border text-text text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <QrCode className="w-3.5 h-3.5 text-primary" />
+              <span>Configure 2FA</span>
+            </Link>
+            <Link
+              href="/users"
+              className="inline-flex items-center space-x-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-colors"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Manage RBAC</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Metrics / Status Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-surface border border-border rounded-lg p-5 shadow-sm">
-          <p className="text-xs font-medium text-muted">Architecture</p>
-          <p className="text-lg font-bold text-text mt-1">Modular Monolith</p>
-          <p className="text-xs text-muted mt-2">NestJS + Next.js App Router</p>
+        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted">Authentication</p>
+            <Lock className="w-4 h-4 text-primary" />
+          </div>
+          <p className="text-lg font-bold text-text mt-1">Argon2id + TOTP</p>
+          <p className="text-xs text-muted mt-2">15-min lockout on 5 failures</p>
         </div>
 
-        <div className="bg-surface border border-border rounded-lg p-5 shadow-sm">
-          <p className="text-xs font-medium text-muted">Audit Ledger</p>
-          <p className="text-lg font-bold text-text mt-1">Hash-Chained</p>
-          <p className="text-xs text-muted mt-2 font-mono">SHA-256(prev || canonical_json)</p>
+        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted">Authorization</p>
+            <UserCheck className="w-4 h-4 text-accent" />
+          </div>
+          <p className="text-lg font-bold text-text mt-1">6 RBAC Profiles</p>
+          <p className="text-xs text-muted mt-2">RolesGuard + ReAuthGuard</p>
         </div>
 
-        <div className="bg-surface border border-border rounded-lg p-5 shadow-sm">
-          <p className="text-xs font-medium text-muted">Storage & Hashing</p>
-          <p className="text-lg font-bold text-text mt-1">MinIO + SHA-256</p>
-          <p className="text-xs text-muted mt-2">AES-256 SSE at rest</p>
+        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted">Token Lifecycles</p>
+            <KeyRound className="w-4 h-4 text-warning" />
+          </div>
+          <p className="text-lg font-bold text-text mt-1">JWT + Rotating RT</p>
+          <p className="text-xs text-muted mt-2">15m Access · 7d Refresh</p>
         </div>
 
-        <div className="bg-surface border border-border rounded-lg p-5 shadow-sm">
-          <p className="text-xs font-medium text-muted">Legal Compliance</p>
+        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted">Legal Compliance</p>
+            <FileCheck className="w-4 h-4 text-success" />
+          </div>
           <p className="text-lg font-bold text-text mt-1">BSA 2023 §61–63</p>
           <p className="text-xs text-muted mt-2">Ed25519 verifiable packages</p>
         </div>
@@ -101,8 +168,8 @@ export default function HomePage() {
       {/* Infrastructure Services Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-text">Infrastructure & Foundation Services</h2>
-          <span className="text-xs font-mono text-muted">docker-compose.yml ready</span>
+          <h2 className="text-lg font-semibold text-text">Core Infrastructure & Micro-Services</h2>
+          <span className="text-xs font-mono text-muted">Docker Compose Services Running</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -111,7 +178,7 @@ export default function HomePage() {
             return (
               <div
                 key={svc.name}
-                className="bg-surface border border-border rounded-lg p-4 flex items-start space-x-4 shadow-sm"
+                className="bg-surface border border-border rounded-xl p-4 flex items-start space-x-4 shadow-sm"
               >
                 <div className="bg-surface-alt p-2.5 rounded-lg border border-border text-primary shrink-0">
                   <Icon className="h-5 w-5" />
@@ -132,8 +199,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Classification Levels & Security Showcase */}
-      <div className="bg-surface border border-border rounded-lg p-6 shadow-sm space-y-4">
+      {/* Classification Levels Showcase */}
+      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm space-y-4">
         <h2 className="text-lg font-semibold text-text">
           Classification Hierarchy & Security Tokens
         </h2>
@@ -150,25 +217,25 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Phase Progression Card */}
-      <div className="bg-surface-alt border border-border rounded-lg p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Next Step: Phase 2 Banner */}
+      <div className="bg-surface-alt border border-border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-            Next Step
+            Up Next
           </span>
           <h3 className="text-base font-bold text-text mt-0.5">
-            Phase 1: Authentication, MFA, and RBAC
+            Phase 2: Append-Only Hash-Chained Audit Ledger
           </h3>
           <p className="text-xs text-muted mt-1">
-            Argon2id password hashing, TOTP MFA enrollment, JWT + rotating refresh tokens, and 6
-            role profiles.
+            Canonical JSON hashing, SHA-256 hash chaining, gapless monotonic sequences, and
+            verify-chain endpoint.
           </p>
         </div>
         <a
-          href="/api/docs"
+          href="http://localhost:4000/api/docs"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center space-x-2 bg-primary text-white text-xs font-semibold px-4 py-2 rounded-md hover:bg-primary-hover transition-colors shrink-0"
+          className="inline-flex items-center justify-center space-x-2 bg-primary text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors shrink-0"
         >
           <span>Explore Swagger API Docs</span>
           <ArrowRight className="h-4 w-4" />
