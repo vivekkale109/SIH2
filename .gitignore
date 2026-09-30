@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build Outputs
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Environment and Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.cert
+*.crt
+
+# Uploads and Temp
+uploads/
+tmp/
+temp/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System & IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Docker & Database
+docker-volumes/
+*.db
+*.sqlite
+
+# Testing
+playwright-report/
+test-results/

@@ -1,0 +1,67 @@
+name: sdms
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sdms-postgres
+    restart: unless-stopped
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sdms_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sdms_password}
+      POSTGRES_DB: ${POSTGRES_DB:-sdms_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-sdms_user} -d ${POSTGRES_DB:-sdms_db}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sdms-redis
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: sdms-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - '${MINIO_PORT:-9002}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  clamav:
+    image: clamav/clamav:latest
+    container_name: sdms-clamav
+    restart: unless-stopped
+    ports:
+      - '${CLAMAV_PORT:-3310}:3310'
+    environment:
+      CLAMAV_NO_FRESHCLAM: 'false'
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:

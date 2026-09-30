@@ -5,18 +5,18 @@
 
 ## Phase Overview
 
-| Phase | Name | Outcome | Tag |
-|---|---|---|---|
-| 0 | Project Setup and Foundation | Repo, tooling, CI, Docker services running | `v0.1.0` |
-| 1 | Authentication, MFA and RBAC | Users can log in securely with roles | `v0.2.0` |
-| 2 | Audit Ledger (Hash-Chained) | Every action is recorded tamper-evidently | `v0.3.0` |
-| 3 | Case Management and ABAC | Case-centric structure with fine-grained access | `v0.4.0` |
-| 4 | Secure Document Upload and Versioning | Files stored encrypted, hashed, versioned | `v0.5.0` |
-| 5 | OCR, Classification and Search | Documents searchable by content | `v0.6.0` |
-| 6 | Controlled Sharing and Watermarking | Time-limited, watermarked cross-department sharing | `v0.7.0` |
-| 7 | Signed Exports and Verifier | Verifiable export packages | `v0.8.0` |
-| 8 | Dashboards, Audit UI and Polish | Role dashboards, audit viewer, UX polish | `v0.9.0` |
-| 9 | Hardening, Testing and Demo Readiness | Production checklist done, demo data, docs | `v1.0.0` |
+| Phase | Name                                  | Outcome                                            | Tag      |
+| ----- | ------------------------------------- | -------------------------------------------------- | -------- |
+| 0     | Project Setup and Foundation          | Repo, tooling, CI, Docker services running         | `v0.1.0` |
+| 1     | Authentication, MFA and RBAC          | Users can log in securely with roles               | `v0.2.0` |
+| 2     | Audit Ledger (Hash-Chained)           | Every action is recorded tamper-evidently          | `v0.3.0` |
+| 3     | Case Management and ABAC              | Case-centric structure with fine-grained access    | `v0.4.0` |
+| 4     | Secure Document Upload and Versioning | Files stored encrypted, hashed, versioned          | `v0.5.0` |
+| 5     | OCR, Classification and Search        | Documents searchable by content                    | `v0.6.0` |
+| 6     | Controlled Sharing and Watermarking   | Time-limited, watermarked cross-department sharing | `v0.7.0` |
+| 7     | Signed Exports and Verifier           | Verifiable export packages                         | `v0.8.0` |
+| 8     | Dashboards, Audit UI and Polish       | Role dashboards, audit viewer, UX polish           | `v0.9.0` |
+| 9     | Hardening, Testing and Demo Readiness | Production checklist done, demo data, docs         | `v1.0.0` |
 
 ---
 
@@ -25,17 +25,19 @@
 **Goal:** A working skeleton that everyone (and every AI session) can build on.
 
 **Tasks**
-- [ ] Init monorepo (`apps/web`, `apps/api`, `packages/shared-types`, `infra`, `docs`)
-- [ ] Set up TypeScript strict, ESLint, Prettier, Husky pre-commit (lint plus secret scan), commitlint
-- [ ] Next.js app with Tailwind and design tokens from `Design.md`
-- [ ] NestJS app with config validation, global exception filter, logger, Swagger, `/health`
-- [ ] Prisma setup, connect to PostgreSQL
-- [ ] `docker-compose.yml`: PostgreSQL, MinIO, Redis, ClamAV
-- [ ] `.env.example`, `.gitignore`, `README.md`
-- [ ] GitHub Actions CI (lint, type-check, test, build)
-- [ ] PR template, CODEOWNERS, branch protection on `main` and `develop`
+
+- [x] Init monorepo (`apps/web`, `apps/api`, `packages/shared-types`, `infra`, `docs`)
+- [x] Set up TypeScript strict, ESLint, Prettier, Husky pre-commit (lint plus secret scan), commitlint
+- [x] Next.js app with Tailwind and design tokens from `Design.md`
+- [x] NestJS app with config validation, global exception filter, logger, Swagger, `/health`
+- [x] Prisma setup, connect to PostgreSQL
+- [x] `docker-compose.yml`: PostgreSQL, MinIO, Redis, ClamAV
+- [x] `.env.example`, `.gitignore`, `README.md`
+- [x] GitHub Actions CI (lint, type-check, test, build)
+- [x] PR template, CODEOWNERS, branch protection on `main` and `develop`
 
 **Exit criteria**
+
 - `docker compose up` starts all services; web and API run locally
 - CI is green on an empty PR
 
@@ -46,6 +48,7 @@
 **Goal:** Secure identity and role-based access.
 
 **Tasks**
+
 - [ ] Prisma models: `User`, `Department`, `RefreshToken`
 - [ ] Argon2id password hashing, password policy
 - [ ] Login endpoint, JWT access (15 min) plus rotating refresh token (httpOnly cookie)
@@ -58,6 +61,7 @@
 - [ ] Seed script (fake users for each role)
 
 **Exit criteria**
+
 - Each role can log in with MFA and sees only its allowed menu
 - Unauthorized API calls return 401/403; tests cover this
 - Brute-force lockout works
@@ -69,6 +73,7 @@
 **Goal:** Tamper-evident record of everything, built **before** features that need it.
 
 **Tasks**
+
 - [ ] `AuditLedger` model (append-only; DB role with INSERT-only)
 - [ ] `AuditService.record()` with canonical JSON and hash chaining
 - [ ] Gapless sequence via transaction plus lock
@@ -77,6 +82,7 @@
 - [ ] Tests: tamper with a row, then chain verification must fail
 
 **Exit criteria**
+
 - Chain verifies as valid on clean data; detects any modified or deleted row
 - No API path exists to update or delete ledger entries
 
@@ -87,6 +93,7 @@
 **Goal:** Case-centric structure with policy-based access.
 
 **Tasks**
+
 - [ ] Models: `Case`, `CaseMember`
 - [ ] CRUD for cases; status lifecycle (Open → Under Review → Closed → Archived)
 - [ ] Assign members with case-level roles
@@ -96,6 +103,7 @@
 - [ ] UI: case list, case detail, create/edit case, member management
 
 **Exit criteria**
+
 - User outside a case cannot see or fetch it (tested)
 - Classification and department rules enforced by policy tests
 
@@ -106,6 +114,7 @@
 **Goal:** Documents are safely ingested, hashed, encrypted, and versioned.
 
 **Tasks**
+
 - [ ] MinIO storage adapter (SSE enabled, bucket policies)
 - [ ] Upload endpoint with type/size validation and streaming
 - [ ] ClamAV scan; quarantine flow
@@ -117,6 +126,7 @@
 - [ ] UI: upload with progress, document list, version history, verify button
 
 **Exit criteria**
+
 - Infected test file (EICAR) is rejected and quarantined
 - Modifying a stored object makes "verify" fail
 - All uploads, views, and downloads appear in the ledger
@@ -128,6 +138,7 @@
 **Goal:** Turn scanned documents into searchable, classified records.
 
 **Tasks**
+
 - [ ] BullMQ queues and worker process
 - [ ] Image preprocessing (deskew, denoise, threshold)
 - [ ] Tesseract OCR worker; store `OcrResult` with confidence
@@ -139,6 +150,7 @@
 - [ ] UI: search page, filters, highlighted snippets
 
 **Exit criteria**
+
 - Uploaded scan becomes searchable within minutes
 - Search never returns documents the user cannot access (tested)
 - Failed OCR jobs are retried and visible with a manual retry
@@ -150,6 +162,7 @@
 **Goal:** Safe cross-department collaboration.
 
 **Tasks**
+
 - [ ] `ShareGrant` model; create, list, revoke
 - [ ] Scope: view-only vs download; expiry date and time
 - [ ] Expiry enforced at access time (not only by cron)
@@ -159,6 +172,7 @@
 - [ ] UI: share dialog, "shared with me", active shares management
 
 **Exit criteria**
+
 - Expired or revoked share gives 403 immediately
 - Watermark visible on all shared outputs
 
@@ -169,6 +183,7 @@
 **Goal:** Court-ready, independently verifiable packages.
 
 **Tasks**
+
 - [ ] Export builder: documents plus `manifest.json` (file hashes, versions, metadata, audit extract)
 - [ ] Ed25519 signing; key management via env/secret manager; key-generation script
 - [ ] Evidence certificate template aligned to BSA 2023 §61–63 (content to be reviewed by a legal advisor)
@@ -178,6 +193,7 @@
 - [ ] UI: export request, history, download, verify
 
 **Exit criteria**
+
 - Package verifies offline as VALID
 - Editing any file or the manifest makes the verifier report INVALID
 
@@ -188,6 +204,7 @@
 **Goal:** Usable product for every role.
 
 **Tasks**
+
 - [ ] Role-specific dashboards (recent cases, pending verifications, expiring shares)
 - [ ] Audit log viewer (filters by user, action, date, entity) for Auditor/Admin
 - [ ] Integrity report page (chain status, last verification, failed checks)
@@ -196,6 +213,7 @@
 - [ ] Empty, loading, and error states everywhere
 
 **Exit criteria**
+
 - Every role's main journey works end-to-end without console errors
 
 ---
@@ -205,6 +223,7 @@
 **Goal:** Safe to pilot and demo.
 
 **Tasks**
+
 - [ ] Security review against OWASP Top 10 checklist
 - [ ] Dependency audit (`npm audit`), fix critical issues
 - [ ] Load test search and upload
@@ -216,6 +235,7 @@
 - [ ] Release `v1.0.0`
 
 **Exit criteria**
+
 - All P0 requirements in `PRD.md` are done and tested
 - Demo runs from a clean machine using only the README
 
@@ -232,6 +252,7 @@
 7. Mark the phase complete in `Memory.md`.
 
 ## Deferred / Future (Post-MVP)
+
 - Trained ML classification and NER models
 - CCTNS / ICJS / e-Courts connectors
 - Federation across units

@@ -12,17 +12,18 @@ develop       ●──●──●──●──●   ●──●──●─
 feature/*       ●●    ●●                              (short-lived)
 ```
 
-| Branch | Purpose | Created from | Merges into | Protected |
-|---|---|---|---|---|
-| `main` | Stable, demo-ready. Only release merges. | — | — | Yes |
-| `develop` | Integration of finished features | `main` | `main` (at phase release) | Yes |
-| `feature/phase-N-<name>` | New functionality for a phase | `develop` | `develop` | No |
-| `fix/<name>` | Bug fix | `develop` | `develop` | No |
-| `hotfix/<name>` | Urgent fix to production or demo | `main` | `main` **and** `develop` | No |
-| `chore/<name>` | Tooling, deps, config | `develop` | `develop` | No |
-| `docs/<name>` | Documentation only | `develop` | `develop` | No |
+| Branch                   | Purpose                                  | Created from | Merges into               | Protected |
+| ------------------------ | ---------------------------------------- | ------------ | ------------------------- | --------- |
+| `main`                   | Stable, demo-ready. Only release merges. | —            | —                         | Yes       |
+| `develop`                | Integration of finished features         | `main`       | `main` (at phase release) | Yes       |
+| `feature/phase-N-<name>` | New functionality for a phase            | `develop`    | `develop`                 | No        |
+| `fix/<name>`             | Bug fix                                  | `develop`    | `develop`                 | No        |
+| `hotfix/<name>`          | Urgent fix to production or demo         | `main`       | `main` **and** `develop`  | No        |
+| `chore/<name>`           | Tooling, deps, config                    | `develop`    | `develop`                 | No        |
+| `docs/<name>`            | Documentation only                       | `develop`    | `develop`                 | No        |
 
 ### Branch naming
+
 - Lowercase, hyphen-separated, short and descriptive.
 - Examples: `feature/phase-1-totp-mfa`, `feature/phase-4-minio-upload`, `fix/ledger-sequence-gap`, `chore/update-prisma`, `docs/update-architecture`.
 
@@ -31,6 +32,7 @@ feature/*       ●●    ●●                              (short-lived)
 ## 2. Branch Protection (set up in Phase 0)
 
 For `main` and `develop`:
+
 - [x] Require a pull request before merging
 - [x] Require at least **1 approving review** (a human, never the AI that wrote the code)
 - [x] Require status checks to pass (lint, type-check, test, build)
@@ -81,28 +83,29 @@ git branch -d feature/phase-1-totp-mfa
 [optional footer: BREAKING CHANGE, Closes #12]
 ```
 
-| Type | Use |
-|---|---|
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `docs` | Documentation only |
-| `style` | Formatting, no logic change |
+| Type       | Use                            |
+| ---------- | ------------------------------ |
+| `feat`     | New feature                    |
+| `fix`      | Bug fix                        |
+| `docs`     | Documentation only             |
+| `style`    | Formatting, no logic change    |
 | `refactor` | Code change, no feature or fix |
-| `perf` | Performance improvement |
-| `test` | Add or fix tests |
-| `build` | Build system or dependencies |
-| `ci` | CI configuration |
-| `chore` | Other maintenance |
-| `security` | Security hardening or fix |
+| `perf`     | Performance improvement        |
+| `test`     | Add or fix tests               |
+| `build`    | Build system or dependencies   |
+| `ci`       | CI configuration               |
+| `chore`    | Other maintenance              |
+| `security` | Security hardening or fix      |
 
 **Scopes:** `auth`, `users`, `cases`, `documents`, `search`, `sharing`, `audit`, `export`, `storage`, `web`, `api`, `infra`, `db`, `docs`.
 
 ### Good vs bad
-| Bad | Good |
-|---|---|
-| `update` | `feat(cases): add case member assignment` |
-| `fixed bug` | `fix(audit): prevent gap in ledger sequence` |
-| `wip` | `test(auth): cover lockout after 5 failed logins` |
+
+| Bad         | Good                                              |
+| ----------- | ------------------------------------------------- |
+| `update`    | `feat(cases): add case member assignment`         |
+| `fixed bug` | `fix(audit): prevent gap in ledger sequence`      |
+| `wip`       | `test(auth): cover lockout after 5 failed logins` |
 
 Rules: summary ≤ 72 chars, no trailing period, one logical change per commit. Enforced by **commitlint** plus **Husky**.
 
@@ -114,15 +117,19 @@ Use `.github/pull_request_template.md`:
 
 ```markdown
 ## What
+
 <!-- Short description of the change -->
 
 ## Why
+
 <!-- Phase / requirement ID (e.g. Phase 4, DOC-3) -->
 
 ## How to test
+
 <!-- Steps or commands -->
 
 ## Checklist
+
 - [ ] Branch follows naming convention
 - [ ] Conventional commits used
 - [ ] Lint, type-check, and tests pass locally
@@ -141,6 +148,7 @@ Use `.github/pull_request_template.md`:
 - **Security-sensitive areas** (auth, audit, crypto, export, policy) require review from a designated code owner (see `CODEOWNERS`).
 
 ### CODEOWNERS example
+
 ```
 /apps/api/src/modules/auth/      @security-lead
 /apps/api/src/modules/audit/     @security-lead
@@ -173,6 +181,7 @@ git push origin develop
 Phase releases `v0.1.0 … v0.9.0`, final `v1.0.0`.
 
 ### Hotfix
+
 ```bash
 git checkout main && git pull
 git checkout -b hotfix/fix-login-lockout
@@ -184,11 +193,11 @@ git checkout -b hotfix/fix-login-lockout
 
 ## 7. Git Hooks (Husky)
 
-| Hook | Action |
-|---|---|
+| Hook         | Action                                                                           |
+| ------------ | -------------------------------------------------------------------------------- |
 | `pre-commit` | `lint-staged` (ESLint plus Prettier on staged files), **secret scan** (gitleaks) |
-| `commit-msg` | commitlint (Conventional Commits) |
-| `pre-push` | Type-check plus unit tests |
+| `commit-msg` | commitlint (Conventional Commits)                                                |
+| `pre-push`   | Type-check plus unit tests                                                       |
 
 ---
 
@@ -232,6 +241,7 @@ docker-volumes/
 ## 10. AI Assistant Git Rules
 
 When an AI assistant works on this repo it must:
+
 1. Check the current branch first (`git status`, `git branch`). **Never work on `main` or `develop`.**
 2. Create or use the correct `feature/…` branch for the current phase.
 3. Make small, atomic commits with Conventional Commit messages.
@@ -244,18 +254,18 @@ When an AI assistant works on this repo it must:
 
 ## 11. Quick Reference
 
-| Task | Command |
-|---|---|
-| See status | `git status -sb` |
-| New branch | `git checkout -b feature/phase-N-name` |
-| Stage part of a file | `git add -p` |
-| Amend last commit (not pushed) | `git commit --amend` |
-| Undo last commit, keep changes | `git reset --soft HEAD~1` |
-| Discard local changes to a file | `git restore <file>` |
-| Stash work | `git stash push -m "msg"` |
-| Rebase onto develop | `git fetch && git rebase origin/develop` |
-| Show pretty log | `git log --oneline --graph --decorate -20` |
-| Delete merged branch | `git branch -d <branch>` |
+| Task                            | Command                                    |
+| ------------------------------- | ------------------------------------------ |
+| See status                      | `git status -sb`                           |
+| New branch                      | `git checkout -b feature/phase-N-name`     |
+| Stage part of a file            | `git add -p`                               |
+| Amend last commit (not pushed)  | `git commit --amend`                       |
+| Undo last commit, keep changes  | `git reset --soft HEAD~1`                  |
+| Discard local changes to a file | `git restore <file>`                       |
+| Stash work                      | `git stash push -m "msg"`                  |
+| Rebase onto develop             | `git fetch && git rebase origin/develop`   |
+| Show pretty log                 | `git log --oneline --graph --decorate -20` |
+| Delete merged branch            | `git branch -d <branch>`                   |
 
 ---
 
@@ -273,4 +283,5 @@ git push -u origin develop
 
 git checkout -b feature/phase-0-setup
 ```
+
 Then enable branch protection on `main` and `develop` in the GitHub settings.

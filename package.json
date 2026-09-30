@@ -1,0 +1,33 @@
+{
+  "name": "sdms-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Secure Digital Document Management System (SDMS) for Legal and Investigation Documents",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev --workspace=@sdms/api",
+    "dev:web": "npm run dev --workspace=@sdms/web",
+    "build": "npm run build:packages && npm run build:apps",
+    "build:packages": "npm run build --workspace=@sdms/shared-types",
+    "build:apps": "npm run build:api && npm run build:web",
+    "build:api": "npm run build --workspace=@sdms/api",
+    "build:web": "npm run build --workspace=@sdms/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "type-check": "npm run type-check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.7.1",
+    "@commitlint/config-conventional": "^19.7.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.4.3",
+    "prettier": "^3.5.2",
+    "typescript": "^5.7.3"
+  }
+}

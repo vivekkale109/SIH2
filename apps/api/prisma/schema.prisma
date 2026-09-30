@@ -1,0 +1,283 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  ADMIN
+  INVESTIGATOR
+  PROSECUTOR
+  COURT_OFFICER
+  RECORDS_MANAGER
+  AUDITOR
+}
+
+enum DepartmentType {
+  POLICE
+  COURT
+  PROSECUTION
+}
+
+enum CaseStatus {
+  OPEN
+  UNDER_REVIEW
+  CLOSED
+  ARCHIVED
+}
+
+enum ClassificationLevel {
+  PUBLIC
+  RESTRICTED
+  CONFIDENTIAL
+  SECRET
+}
+
+enum CaseMemberRole {
+  LEAD_INVESTIGATOR
+  INVESTIGATOR
+  PROSECUTOR
+  REVIEWER
+}
+
+enum ShareScope {
+  VIEW_ONLY
+  DOWNLOAD
+}
+
+enum DocumentStatus {
+  UPLOADING
+  SCANNING
+  PROCESSING
+  NEEDS_REVIEW
+  READY
+  QUARANTINED
+  FAILED
+}
+
+model Department {
+  id           String         @id @default(uuid())
+  name         String
+  code         String         @unique
+  type         DepartmentType
+  jurisdiction String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  users User[]
+  cases Case[]
+
+  @@index([type])
+  @@map("departments")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  badgeNumber  String?
+  role         UserRole
+  departmentId String
+  isActive     Boolean  @default(true)
+  mfaEnabled   Boolean  @default(false)
+  mfaSecret    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department       Department        @relation(fields: [departmentId], references: [id])
+  refreshTokens    RefreshToken[]
+  caseMemberships  CaseMember[]
+  createdCases     Case[]            @relation("CreatedCases")
+  createdDocuments Document[]        @relation("CreatedDocuments")
+  uploadedVersions DocumentVersion[] @relation("UploadedVersions")
+  grantedShares    ShareGrant[]      @relation("GrantedShares")
+  receivedShares   ShareGrant[]      @relation("ReceivedShares")
+  exportPackages   ExportPackage[]   @relation("CreatedExports")
+
+  @@index([email])
+  @@index([role])
+  @@index([departmentId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model Case {
+  id             String              @id @default(uuid())
+  caseNumber     String              @unique
+  title          String
+  description    String?
+  status         CaseStatus          @default(OPEN)
+  classification ClassificationLevel @default(RESTRICTED)
+  departmentId   String
+  createdById    String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  department     Department      @relation(fields: [departmentId], references: [id])
+  createdBy      User            @relation("CreatedCases", fields: [createdById], references: [id])
+  members        CaseMember[]
+  documents      Document[]
+  exportPackages ExportPackage[]
+
+  @@index([caseNumber])
+  @@index([status])
+  @@index([classification])
+  @@index([departmentId])
+  @@map("cases")
+}
+
+model CaseMember {
+  id         String         @id @default(uuid())
+  caseId     String
+  userId     String
+  caseRole   CaseMemberRole
+  assignedAt DateTime       @default(now())
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, userId])
+  @@index([caseId])
+  @@index([userId])
+  @@map("case_members")
+}
+
+model Document {
+  id               String              @id @default(uuid())
+  caseId           String
+  title            String
+  type             String
+  classification   ClassificationLevel @default(RESTRICTED)
+  status           DocumentStatus      @default(PROCESSING)
+  currentVersionId String?
+  createdById      String
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  case      Case              @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdBy User              @relation("CreatedDocuments", fields: [createdById], references: [id])
+  versions  DocumentVersion[]
+
+  @@index([caseId])
+  @@index([classification])
+  @@index([status])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id           String   @id @default(uuid())
+  documentId   String
+  versionNo    Int
+  storageKey   String
+  sha256       String
+  sizeBytes    BigInt
+  mimeType     String
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  document   Document   @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploadedBy User       @relation("UploadedVersions", fields: [uploadedById], references: [id])
+  ocrResult  OcrResult?
+
+  @@unique([documentId, versionNo])
+  @@index([documentId])
+  @@index([sha256])
+  @@map("document_versions")
+}
+
+model OcrResult {
+  id            String    @id @default(uuid())
+  versionId     String    @unique
+  extractedText String    @db.Text
+  confidence    Float?
+  verifiedById  String?
+  verifiedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  version DocumentVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@map("ocr_results")
+}
+
+model ShareGrant {
+  id                  String     @id @default(uuid())
+  resourceType        String     // 'CASE' | 'DOCUMENT'
+  resourceId          String
+  granterId           String
+  granteeId           String?
+  granteeDepartmentId String?
+  scope               ShareScope @default(VIEW_ONLY)
+  expiresAt           DateTime
+  revokedAt           DateTime?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  granter User  @relation("GrantedShares", fields: [granterId], references: [id])
+  grantee User? @relation("ReceivedShares", fields: [granteeId], references: [id])
+
+  @@index([resourceId])
+  @@index([granterId])
+  @@index([granteeId])
+  @@index([expiresAt])
+  @@map("share_grants")
+}
+
+// Append-only hash-chained audit ledger. No updatedAt field.
+model AuditLedger {
+  id         String   @id @default(uuid())
+  sequence   BigInt   @unique
+  timestamp  DateTime @default(now())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json     @default("{}")
+  prevHash   String
+  entryHash  String
+
+  @@index([sequence])
+  @@index([actorId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@map("audit_ledger")
+}
+
+model ExportPackage {
+  id           String   @id @default(uuid())
+  caseId       String
+  manifestHash String
+  signature    String
+  createdById  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  case      Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  createdBy User @relation("CreatedExports", fields: [createdById], references: [id])
+
+  @@index([caseId])
+  @@index([createdById])
+  @@map("export_packages")
+}

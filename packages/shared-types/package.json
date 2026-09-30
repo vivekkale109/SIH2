@@ -1,0 +1,16 @@
+{
+  "name": "@sdms/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared TypeScript types, DTOs, and enums for SDMS",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

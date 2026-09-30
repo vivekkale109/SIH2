@@ -1,0 +1,14 @@
+# SDMS Code Owners
+
+# Global fallback
+*                                @vivekkale109
+
+# Security and sensitive modules
+/apps/api/src/modules/auth/      @vivekkale109
+/apps/api/src/modules/audit/     @vivekkale109
+/apps/api/src/modules/export/    @vivekkale109
+/apps/api/src/common/            @vivekkale109
+
+# Infrastructure
+/infra/                          @vivekkale109
+docker-compose.yml               @vivekkale109
