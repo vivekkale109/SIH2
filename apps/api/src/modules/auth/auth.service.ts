@@ -11,9 +11,10 @@ import { createHash, randomBytes } from 'crypto';
 import { authenticator } from 'otplib';
 import * as qrcode from 'qrcode';
 import { User } from '@prisma/client';
-import { UserRole, UserSummary } from '@sdms/shared-types';
+import { UserRole, UserSummary, AuditAction } from '@sdms/shared-types';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PasswordUtil } from '../../common/utils/password.util';
+import { AuditService } from '../audit/audit.service';
 import { LoginDto } from './dto/login.dto';
 import { EnableMfaDto, DisableMfaDto } from './dto/mfa.dto';
 import {
@@ -39,6 +40,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
   ) {}
 
   public async validateUser(email: string, pass: string): Promise<User> {
@@ -47,6 +49,16 @@ export class AuthService {
 
     if (tracker?.lockedUntil && Date.now() < tracker.lockedUntil) {
       const remainingSeconds = Math.ceil((tracker.lockedUntil - Date.now()) / 1000);
+      void this.auditService
+        .record({
+          actorId: 'system',
+          action: AuditAction.LOGIN_FAILED,
+          entityType: 'User',
+          entityId: normalizedEmail,
+          metadata: { email: normalizedEmail, reason: 'account_locked' },
+        })
+        .catch((err) => this.logger.error('Failed to write audit record', err));
+
       throw new UnauthorizedException(
         `Account temporarily locked due to multiple failed login attempts. Try again in ${remainingSeconds} seconds.`,
       );
@@ -58,12 +70,30 @@ export class AuthService {
 
     if (!user || !user.isActive) {
       this.recordFailedAttempt(normalizedEmail);
+      void this.auditService
+        .record({
+          actorId: user?.id || 'system',
+          action: AuditAction.LOGIN_FAILED,
+          entityType: 'User',
+          entityId: user?.id || normalizedEmail,
+          metadata: { email: normalizedEmail, reason: 'invalid_credentials' },
+        })
+        .catch((err) => this.logger.error('Failed to write audit record', err));
       throw new UnauthorizedException('Invalid email or password');
     }
 
     const isPasswordValid = await PasswordUtil.verify(user.passwordHash, pass);
     if (!isPasswordValid) {
       this.recordFailedAttempt(normalizedEmail);
+      void this.auditService
+        .record({
+          actorId: user.id,
+          action: AuditAction.LOGIN_FAILED,
+          entityType: 'User',
+          entityId: user.id,
+          metadata: { email: normalizedEmail, reason: 'invalid_credentials' },
+        })
+        .catch((err) => this.logger.error('Failed to write audit record', err));
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -91,11 +121,44 @@ export class AuthService {
       const isValid = authenticator.check(loginDto.mfaCode, user.mfaSecret);
 
       if (!isValid) {
+        void this.auditService
+          .record({
+            actorId: user.id,
+            action: AuditAction.MFA_FAILED,
+            entityType: 'User',
+            entityId: user.id,
+            metadata: { email: user.email },
+          })
+          .catch((err) => this.logger.error('Failed to write audit record', err));
         throw new UnauthorizedException('Invalid MFA authentication code');
       }
+
+      void this.auditService
+        .record({
+          actorId: user.id,
+          action: AuditAction.MFA_VERIFIED,
+          entityType: 'User',
+          entityId: user.id,
+          metadata: { email: user.email },
+        })
+        .catch((err) => this.logger.error('Failed to write audit record', err));
     }
 
     const tokens = await this.generateTokens(user);
+
+    void this.auditService
+      .record({
+        actorId: user.id,
+        action: AuditAction.LOGIN_SUCCESS,
+        entityType: 'User',
+        entityId: user.id,
+        metadata: {
+          email: user.email,
+          role: user.role,
+          departmentId: user.departmentId,
+        },
+      })
+      .catch((err) => this.logger.error('Failed to write audit record', err));
 
     return {
       mfaRequired: false,
@@ -142,6 +205,15 @@ export class AuthService {
         data: { revokedAt: new Date() },
       });
     }
+
+    void this.auditService
+      .record({
+        actorId: userId,
+        action: AuditAction.LOGOUT,
+        entityType: 'User',
+        entityId: userId,
+      })
+      .catch((err) => this.logger.error('Failed to write audit record', err));
   }
 
   public async generateMfaSecret(userId: string): Promise<MfaGenerateResponse> {
@@ -171,6 +243,15 @@ export class AuthService {
     const isValid = authenticator.check(dto.code, dto.secret);
 
     if (!isValid) {
+      void this.auditService
+        .record({
+          actorId: userId,
+          action: AuditAction.MFA_FAILED,
+          entityType: 'User',
+          entityId: userId,
+          metadata: { flow: 'enable_mfa' },
+        })
+        .catch((err) => this.logger.error('Failed to write audit record', err));
       throw new BadRequestException('Invalid verification code. Failed to enable MFA.');
     }
 
@@ -181,6 +262,16 @@ export class AuthService {
         mfaSecret: dto.secret,
       },
     });
+
+    void this.auditService
+      .record({
+        actorId: userId,
+        action: AuditAction.MFA_VERIFIED,
+        entityType: 'User',
+        entityId: userId,
+        metadata: { flow: 'mfa_enabled' },
+      })
+      .catch((err) => this.logger.error('Failed to write audit record', err));
 
     this.logger.log(`MFA enabled successfully for user ${user.email}`);
   }
@@ -203,6 +294,16 @@ export class AuthService {
         mfaSecret: null,
       },
     });
+
+    void this.auditService
+      .record({
+        actorId: userId,
+        action: AuditAction.USER_UPDATED,
+        entityType: 'User',
+        entityId: userId,
+        metadata: { mfaDisabled: true },
+      })
+      .catch((err) => this.logger.error('Failed to write audit record', err));
 
     this.logger.log(`MFA disabled for user ${user.email}`);
   }

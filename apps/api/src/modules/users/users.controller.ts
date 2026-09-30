@@ -19,6 +19,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { ReAuthGuard } from '../auth/guards/re-auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RequireReAuth } from '../auth/decorators/require-reauth.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../auth/interfaces/auth.interface';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -34,8 +36,11 @@ export class UsersController {
   @ApiResponse({ status: 400, description: 'Validation failed or password policy not met' })
   @ApiResponse({ status: 403, description: 'Forbidden: requires ADMIN role' })
   @ApiResponse({ status: 409, description: 'Email already exists' })
-  async create(@Body() createUserDto: CreateUserDto): Promise<UserSummary> {
-    return this.usersService.create(createUserDto);
+  async create(
+    @Body() createUserDto: CreateUserDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<UserSummary> {
+    return this.usersService.create(createUserDto, user.id);
   }
 
   @Get()
@@ -85,8 +90,9 @@ export class UsersController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<UserSummary> {
-    return this.usersService.update(id, updateUserDto);
+    return this.usersService.update(id, updateUserDto, user.id);
   }
 
   @Patch(':id/disable')
@@ -98,7 +104,10 @@ export class UsersController {
   })
   @ApiResponse({ status: 200, description: 'User disabled and sessions revoked' })
   @ApiResponse({ status: 403, description: 'Forbidden or re-authentication required' })
-  async disable(@Param('id', ParseUUIDPipe) id: string): Promise<UserSummary> {
-    return this.usersService.disable(id);
+  async disable(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<UserSummary> {
+    return this.usersService.disable(id, user.id);
   }
 }
