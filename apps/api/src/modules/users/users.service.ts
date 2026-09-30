@@ -6,9 +6,10 @@ import {
   Logger,
 } from '@nestjs/common';
 import { User, Prisma } from '@prisma/client';
-import { UserRole, UserSummary, PaginatedResult } from '@sdms/shared-types';
+import { UserRole, UserSummary, PaginatedResult, AuditAction } from '@sdms/shared-types';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PasswordUtil } from '../../common/utils/password.util';
+import { AuditService } from '../audit/audit.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -16,9 +17,12 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
-  public async create(dto: CreateUserDto): Promise<UserSummary> {
+  public async create(dto: CreateUserDto, actorId: string = 'system'): Promise<UserSummary> {
     const policyResult = PasswordUtil.validatePolicy(dto.password);
     if (!policyResult.valid) {
       throw new BadRequestException(
@@ -57,6 +61,33 @@ export class UsersService {
         isActive: true,
       },
     });
+
+    void this.auditService
+      .record({
+        actorId,
+        action: AuditAction.USER_CREATED,
+        entityType: 'User',
+        entityId: user.id,
+        metadata: {
+          email: user.email,
+          role: user.role,
+          departmentId: user.departmentId,
+        },
+      })
+      .catch((err) => this.logger.error('Failed to write audit record', err));
+
+    void this.auditService
+      .record({
+        actorId,
+        action: AuditAction.ROLE_ASSIGNED,
+        entityType: 'User',
+        entityId: user.id,
+        metadata: {
+          role: user.role,
+          targetUserId: user.id,
+        },
+      })
+      .catch((err) => this.logger.error('Failed to write audit record', err));
 
     this.logger.log(`Created user ${user.email} with role ${user.role}`);
     return this.toSummary(user);
@@ -122,7 +153,11 @@ export class UsersService {
     return this.toSummary(user);
   }
 
-  public async update(id: string, dto: UpdateUserDto): Promise<UserSummary> {
+  public async update(
+    id: string,
+    dto: UpdateUserDto,
+    actorId: string = 'system',
+  ): Promise<UserSummary> {
     await this.findById(id);
 
     if (dto.departmentId) {
@@ -145,10 +180,37 @@ export class UsersService {
       },
     });
 
+    void this.auditService
+      .record({
+        actorId,
+        action: AuditAction.USER_UPDATED,
+        entityType: 'User',
+        entityId: updated.id,
+        metadata: {
+          changedFields: Object.keys(dto),
+        },
+      })
+      .catch((err) => this.logger.error('Failed to write audit record', err));
+
+    if (dto.role) {
+      void this.auditService
+        .record({
+          actorId,
+          action: AuditAction.ROLE_ASSIGNED,
+          entityType: 'User',
+          entityId: updated.id,
+          metadata: {
+            role: dto.role,
+            targetUserId: updated.id,
+          },
+        })
+        .catch((err) => this.logger.error('Failed to write audit record', err));
+    }
+
     return this.toSummary(updated);
   }
 
-  public async disable(id: string): Promise<UserSummary> {
+  public async disable(id: string, actorId: string = 'system'): Promise<UserSummary> {
     await this.findById(id);
 
     // Disable user and revoke all refresh tokens in a transaction
@@ -162,6 +224,18 @@ export class UsersService {
         data: { revokedAt: new Date() },
       }),
     ]);
+
+    void this.auditService
+      .record({
+        actorId,
+        action: AuditAction.USER_DISABLED,
+        entityType: 'User',
+        entityId: user.id,
+        metadata: {
+          targetUserId: user.id,
+        },
+      })
+      .catch((err) => this.logger.error('Failed to write audit record', err));
 
     this.logger.warn(`User ${user.email} disabled and all active sessions revoked`);
     return this.toSummary(user);

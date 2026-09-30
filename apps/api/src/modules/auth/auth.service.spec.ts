@@ -5,6 +5,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { UserRole } from '@sdms/shared-types';
 import { authenticator } from 'otplib';
 import { AuthService } from './auth.service';
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PasswordUtil } from '../../common/utils/password.util';
 
@@ -63,6 +64,12 @@ describe('AuthService', () => {
               if (key === 'JWT_SECRET') return 'test-secret-at-least-32-characters-long';
               return def;
             }),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            record: jest.fn().mockResolvedValue({ id: 'audit-1', sequence: 1 }),
           },
         },
       ],

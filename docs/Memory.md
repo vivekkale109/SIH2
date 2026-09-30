@@ -25,31 +25,31 @@
 
 ## 2. Current Status
 
-| Item                    | Value                                                                                            |
-| ----------------------- | ------------------------------------------------------------------------------------------------ |
-| **Current phase**       | Phase 1 — Authentication, MFA, and RBAC (Completed, ready for Phase 2)                           |
-| **Current branch**      | `feature/phase-1-auth-rbac`                                                                      |
-| **Last completed task** | Complete Phase 1 implementation (auth, TOTP MFA, RBAC guards, user admin, tests, UI, migrations) |
-| **In progress**         | Commit Phase 1, merge to develop, initiate Phase 2 (Audit Ledger)                                |
-| **Blocked by**          | _nothing_                                                                                        |
-| **Last updated**        | 2026-09-30 by Antigravity                                                                        |
+| Item                    | Value                                                                                               |
+| ----------------------- | --------------------------------------------------------------------------------------------------- |
+| **Current phase**       | Phase 2 — Audit Ledger (Hash-Chained) (Completed, ready for Phase 3)                                |
+| **Current branch**      | `feature/phase-2-audit-ledger`                                                                      |
+| **Last completed task** | Complete Phase 2 implementation (AuditLedger, canonical JSON hash-chaining, verify-chain, audit UI) |
+| **In progress**         | Merge Phase 2 to develop, tag v0.3.0, initiate Phase 3 (Case Management and ABAC)                   |
+| **Blocked by**          | _nothing_                                                                                           |
+| **Last updated**        | 2026-09-30 by Antigravity                                                                           |
 
 ---
 
 ## 3. Phase Tracker
 
-| Phase | Name                         | Status         | Branch                      | Tag      | Completed  |
-| ----- | ---------------------------- | -------------- | --------------------------- | -------- | ---------- |
-| 0     | Setup and Foundation         | ✅ Done        | `feature/phase-0-setup`     | `v0.1.0` | 2026-09-30 |
-| 1     | Auth, MFA, RBAC              | ✅ Done        | `feature/phase-1-auth-rbac` | `v0.2.0` | 2026-09-30 |
-| 2     | Audit Ledger                 | ⬜ Not started |                             |          |            |
-| 3     | Cases and ABAC               | ⬜ Not started |                             |          |            |
-| 4     | Upload and Versioning        | ⬜ Not started |                             |          |            |
-| 5     | OCR, Classification, Search  | ⬜ Not started |                             |          |            |
-| 6     | Sharing and Watermarking     | ⬜ Not started |                             |          |            |
-| 7     | Signed Exports and Verifier  | ⬜ Not started |                             |          |            |
-| 8     | Dashboards, Audit UI, Polish | ⬜ Not started |                             |          |            |
-| 9     | Hardening and Demo           | ⬜ Not started |                             |          |            |
+| Phase | Name                         | Status         | Branch                         | Tag      | Completed  |
+| ----- | ---------------------------- | -------------- | ------------------------------ | -------- | ---------- |
+| 0     | Setup and Foundation         | ✅ Done        | `feature/phase-0-setup`        | `v0.1.0` | 2026-09-30 |
+| 1     | Auth, MFA, RBAC              | ✅ Done        | `feature/phase-1-auth-rbac`    | `v0.2.0` | 2026-09-30 |
+| 2     | Audit Ledger                 | ✅ Done        | `feature/phase-2-audit-ledger` | `v0.3.0` | 2026-09-30 |
+| 3     | Cases and ABAC               | ⬜ Not started |                                |          |            |
+| 4     | Upload and Versioning        | ⬜ Not started |                                |          |            |
+| 5     | OCR, Classification, Search  | ⬜ Not started |                                |          |            |
+| 6     | Sharing and Watermarking     | ⬜ Not started |                                |          |            |
+| 7     | Signed Exports and Verifier  | ⬜ Not started |                                |          |            |
+| 8     | Dashboards, Audit UI, Polish | ⬜ Not started |                                |          |            |
+| 9     | Hardening and Demo           | ⬜ Not started |                                |          |            |
 
 Legend: ⬜ Not started · 🟨 In progress · ✅ Done · ⛔ Blocked
 
@@ -118,6 +118,22 @@ Legend: ⬜ Not started · 🟨 In progress · ✅ Done · ⛔ Blocked
 - Next steps:
 - Notes for next session:
 ```
+
+### 2026-09-30 — Phase 2 Audit Ledger (Hash-Chained) Implementation
+
+- Phase / Branch: Phase 2 / `feature/phase-2-audit-ledger`
+- Done:
+  - Created canonical JSON utility with recursive key sorting and timing-safe SHA-256 comparison (`canonical-json.util.ts`)
+  - Built `AuditService.record()` appending immutable records serialized via PostgreSQL advisory transaction locks (`pg_advisory_xact_lock`) ensuring monotonic gapless sequences
+  - Implemented cryptographic chain verification (`verifyChain()` and `GET /api/v1/audit/verify-chain`) validating sequence integrity, hash pointer continuity, and SHA-256 canonical payload hashes
+  - Integrated audit recording into Phase 1 actions: login success, login failure (lockout/bad creds), MFA verification/failure, logout, user creation, user updates, and user disablement
+  - Built Audit Ledger web interface (`/audit`): cryptographic integrity seal status banner, verify chain trigger, sequence details inspector, action badge filters, and entity search with fallback support
+  - Wrote comprehensive unit and e2e test suites: testing sequence gaps, broken hash links, tampered row payloads, RBAC permissions (Auditor/Admin only), and verify-chain integrity restoration
+- Files touched: `apps/api/src/modules/audit/*`, `apps/api/src/common/utils/canonical-json.*`, `apps/api/src/modules/auth/*`, `apps/api/src/modules/users/*`, `apps/web/src/app/audit/page.tsx`, `apps/web/next.config.mjs`, `docs/Phases.md`, `docs/Memory.md`
+- Decisions: D2 — Used SHA-256 chained hash ledger with genesis hash (`0`^64) and advisory xact lock for gapless monotonic sequence.
+- Tests: Unit tests (49/49 pass), e2e tests (18/18 pass), lint (0 errors/warnings), full monorepo build (pass)
+- Next steps: Merge `feature/phase-2-audit-ledger` into `develop`, tag `v0.3.0`, and start Phase 3 (Case Management and ABAC).
+- Notes for next session: Phase 3 will introduce `Case` and `CaseMember` models, lifecycle state transitions (Open → Under Review → Closed → Archived), case-level roles, `PolicyGuard` (ABAC), and case audit logging.
 
 ### 2026-09-30 — Phase 1 Authentication, MFA, and RBAC Implementation
 

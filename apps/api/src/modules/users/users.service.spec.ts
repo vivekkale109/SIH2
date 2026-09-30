@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { UserRole } from '@sdms/shared-types';
 import { UsersService } from './users.service';
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 describe('UsersService', () => {
@@ -29,6 +30,12 @@ describe('UsersService', () => {
               updateMany: jest.fn(),
             },
             $transaction: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            record: jest.fn().mockResolvedValue({ id: 'audit-1', sequence: 1 }),
           },
         },
       ],
