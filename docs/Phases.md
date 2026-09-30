@@ -74,12 +74,12 @@
 
 **Tasks**
 
-- [ ] `AuditLedger` model (append-only; DB role with INSERT-only)
-- [ ] `AuditService.record()` with canonical JSON and hash chaining
-- [ ] Gapless sequence via transaction plus lock
-- [ ] Verify-chain service and endpoint (`GET /audit/verify-chain`)
-- [ ] Wire ledger into Phase 1 (login success/fail, role changes, user creation)
-- [ ] Tests: tamper with a row, then chain verification must fail
+- [x] `AuditLedger` model (append-only; DB role with INSERT-only)
+- [x] `AuditService.record()` with canonical JSON and hash chaining
+- [x] Gapless sequence via transaction plus lock
+- [x] Verify-chain service and endpoint (`GET /audit/verify-chain`)
+- [x] Wire ledger into Phase 1 (login success/fail, role changes, user creation)
+- [x] Tests: tamper with a row, then chain verification must fail
 
 **Exit criteria**
 
