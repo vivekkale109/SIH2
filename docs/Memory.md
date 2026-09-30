@@ -25,31 +25,31 @@
 
 ## 2. Current Status
 
-| Item                    | Value                                                                                         |
-| ----------------------- | --------------------------------------------------------------------------------------------- |
-| **Current phase**       | Phase 0 — Project Setup and Foundation (Completed, ready for Phase 1)                         |
-| **Current branch**      | `feature/phase-0-setup`                                                                       |
-| **Last completed task** | Phase 0 verification: monorepo builds, type-checks, tests pass, ESLint 9 & e2e setup complete |
-| **In progress**         | Commit Phase 0, merge to develop, initiate Phase 1 (Auth, MFA, RBAC)                          |
-| **Blocked by**          | _nothing_                                                                                     |
-| **Last updated**        | 2026-09-30 by Antigravity                                                                     |
+| Item                    | Value                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| **Current phase**       | Phase 1 — Authentication, MFA, and RBAC (Completed, ready for Phase 2)                           |
+| **Current branch**      | `feature/phase-1-auth-rbac`                                                                      |
+| **Last completed task** | Complete Phase 1 implementation (auth, TOTP MFA, RBAC guards, user admin, tests, UI, migrations) |
+| **In progress**         | Commit Phase 1, merge to develop, initiate Phase 2 (Audit Ledger)                                |
+| **Blocked by**          | _nothing_                                                                                        |
+| **Last updated**        | 2026-09-30 by Antigravity                                                                        |
 
 ---
 
 ## 3. Phase Tracker
 
-| Phase | Name                         | Status         | Branch                  | Tag      | Completed  |
-| ----- | ---------------------------- | -------------- | ----------------------- | -------- | ---------- |
-| 0     | Setup and Foundation         | ✅ Done        | `feature/phase-0-setup` | `v0.1.0` | 2026-09-30 |
-| 1     | Auth, MFA, RBAC              | ⬜ Not started |                         |          |            |
-| 2     | Audit Ledger                 | ⬜ Not started |                         |          |            |
-| 3     | Cases and ABAC               | ⬜ Not started |                         |          |            |
-| 4     | Upload and Versioning        | ⬜ Not started |                         |          |            |
-| 5     | OCR, Classification, Search  | ⬜ Not started |                         |          |            |
-| 6     | Sharing and Watermarking     | ⬜ Not started |                         |          |            |
-| 7     | Signed Exports and Verifier  | ⬜ Not started |                         |          |            |
-| 8     | Dashboards, Audit UI, Polish | ⬜ Not started |                         |          |            |
-| 9     | Hardening and Demo           | ⬜ Not started |                         |          |            |
+| Phase | Name                         | Status         | Branch                      | Tag      | Completed  |
+| ----- | ---------------------------- | -------------- | --------------------------- | -------- | ---------- |
+| 0     | Setup and Foundation         | ✅ Done        | `feature/phase-0-setup`     | `v0.1.0` | 2026-09-30 |
+| 1     | Auth, MFA, RBAC              | ✅ Done        | `feature/phase-1-auth-rbac` | `v0.2.0` | 2026-09-30 |
+| 2     | Audit Ledger                 | ⬜ Not started |                             |          |            |
+| 3     | Cases and ABAC               | ⬜ Not started |                             |          |            |
+| 4     | Upload and Versioning        | ⬜ Not started |                             |          |            |
+| 5     | OCR, Classification, Search  | ⬜ Not started |                             |          |            |
+| 6     | Sharing and Watermarking     | ⬜ Not started |                             |          |            |
+| 7     | Signed Exports and Verifier  | ⬜ Not started |                             |          |            |
+| 8     | Dashboards, Audit UI, Polish | ⬜ Not started |                             |          |            |
+| 9     | Hardening and Demo           | ⬜ Not started |                             |          |            |
 
 Legend: ⬜ Not started · 🟨 In progress · ✅ Done · ⛔ Blocked
 
@@ -118,6 +118,24 @@ Legend: ⬜ Not started · 🟨 In progress · ✅ Done · ⛔ Blocked
 - Next steps:
 - Notes for next session:
 ```
+
+### 2026-09-30 — Phase 1 Authentication, MFA, and RBAC Implementation
+
+- Phase / Branch: Phase 1 / `feature/phase-1-auth-rbac`
+- Done:
+  - Implemented Argon2id password hashing and strict policy validation (`password.util.ts`)
+  - Built JWT auth strategy, access/refresh token rotation, httpOnly cookie support, and 5-attempt rate-limiting lockout (`AuthService`, `AuthController`)
+  - Added TOTP MFA enrollment with QR code generation (`otplib`, `qrcode`) and verification endpoints
+  - Developed `RolesGuard`, `@Roles()`, `RequireReauthGuard`, and `@RequireReauth()` decorators across all 6 system roles
+  - Added user management endpoints (admin CRUD, user status toggle, department assignment) and departments query endpoint
+  - Created Prisma database migration `20260930130125_init` and populated demo departments and 6 role-based users in `seed.ts`
+  - Built Next.js web interface: `AuthContext` with cookie/token management, `/login` page with role previews, `/mfa` TOTP setup, `/users` administration table with role filtering, and dynamic role-aware navigation
+  - Added comprehensive test suites: 33 unit tests and 10 e2e tests passing
+- Files touched: `apps/api/*`, `apps/web/*`, `packages/*`, `docs/Phases.md`, `docs/Memory.md`
+- Decisions: Retained strict Argon2id parameters (64MB memory cost, 3 iterations) and TOTP standards; locked out accounts after 5 failed attempts for 15 minutes.
+- Tests: Unit tests (33/33 pass), e2e tests (10/10 pass), monorepo build and lint pass
+- Next steps: Merge `feature/phase-1-auth-rbac` into `develop`, tag `v0.2.0`, and start Phase 2 (Append-only hash-chained Audit Ledger).
+- Notes for next session: Phase 2 will implement `AuditLedger` model, `AuditService.record()` with canonical JSON + SHA-256 chaining, gapless monotonic sequences, and verify-chain endpoint.
 
 ### 2026-09-30 — Phase 0 Monorepo and Foundation Setup
 
