@@ -41,6 +41,7 @@ export const Sidebar: React.FC = () => {
         return [
           { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
           { label: 'Cases & Records', icon: Briefcase, href: '/cases', badge: 'Phase 3' },
+          { label: 'Upload Evidence', icon: Upload, href: '/upload', badge: 'Phase 4' },
           { label: 'Users & RBAC', icon: Users, href: '/users', badge: 'Admin' },
           { label: 'Departments', icon: Building2, href: '/departments' },
           { label: 'Audit Ledger', icon: ScrollText, href: '/audit', badge: 'Phase 2' },

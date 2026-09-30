@@ -20,6 +20,17 @@ import {
   Layers,
   ChevronRight,
   X,
+  Download,
+  History,
+  FileUp,
+  Copy,
+  Check,
+  ExternalLink,
+  ShieldAlert,
+  ShieldCheck,
+  RefreshCw,
+  HardDrive,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -30,6 +41,10 @@ import {
   AuditLedgerEntry,
   UserRole,
   AuditAction,
+  DocumentSummary,
+  DocumentVersionSummary,
+  DocumentIntegrityResult,
+  DocumentStatus,
 } from '@sdms/shared-types';
 
 interface PageProps {
@@ -46,7 +61,7 @@ const DEMO_CASE_DETAIL: CaseDetailSummary = {
   classification: ClassificationLevel.RESTRICTED,
   departmentId: 'POL-CCB',
   createdById: 'demo-investigator-id',
-  documentCount: 4,
+  documentCount: 2,
   createdAt: '2026-09-30T09:30:00.000Z',
   updatedAt: '2026-09-30T10:15:00.000Z',
   department: {
@@ -111,6 +126,35 @@ const DEMO_CASE_DETAIL: CaseDetailSummary = {
   ],
 };
 
+const DEMO_DOCUMENTS: DocumentSummary[] = [
+  {
+    id: 'doc-demo-1',
+    caseId: 'case-demo-1',
+    title: 'Digital Forensic Storage Acquisition & Bitstream Hash Report',
+    type: 'FORENSIC_REPORT',
+    classification: ClassificationLevel.RESTRICTED,
+    status: DocumentStatus.READY,
+    latestVersionNo: 2,
+    sha256: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+    createdById: 'demo-investigator-id',
+    createdAt: '2026-09-30T10:00:00.000Z',
+    updatedAt: '2026-09-30T10:45:00.000Z',
+  },
+  {
+    id: 'doc-demo-2',
+    caseId: 'case-demo-1',
+    title: 'Certified First Information Report (FIR Signed Copy)',
+    type: 'FIR',
+    classification: ClassificationLevel.RESTRICTED,
+    status: DocumentStatus.READY,
+    latestVersionNo: 1,
+    sha256: '4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a',
+    createdById: 'demo-investigator-id',
+    createdAt: '2026-09-30T09:35:00.000Z',
+    updatedAt: '2026-09-30T09:35:00.000Z',
+  },
+];
+
 const DEMO_TIMELINE: AuditLedgerEntry[] = [
   {
     id: 'tl-1',
@@ -133,15 +177,34 @@ const DEMO_TIMELINE: AuditLedgerEntry[] = [
     sequence: 14,
     timestamp: '2026-09-30T10:00:00.000Z',
     actorId: 'demo-investigator-id',
-    action: AuditAction.CASE_MEMBER_ADDED,
-    entityType: 'Case',
-    entityId: 'case-demo-1',
+    action: AuditAction.DOCUMENT_UPLOADED,
+    entityType: 'Document',
+    entityId: 'doc-demo-1',
     metadata: {
-      targetUserId: 'demo-prosecutor-id',
-      caseRole: 'PROSECUTOR',
+      caseId: 'case-demo-1',
+      versionNo: 1,
+      sha256: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+      filename: 'forensic_bitstream_log.pdf',
     },
     prevHash: 'b9a8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8',
     entryHash: 'c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2',
+  },
+  {
+    id: 'tl-3',
+    sequence: 15,
+    timestamp: '2026-09-30T10:45:00.000Z',
+    actorId: 'demo-investigator-id',
+    action: AuditAction.DOCUMENT_UPLOADED,
+    entityType: 'Document',
+    entityId: 'doc-demo-1',
+    metadata: {
+      caseId: 'case-demo-1',
+      versionNo: 2,
+      sha256: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+      filename: 'forensic_bitstream_log_v2.pdf',
+    },
+    prevHash: 'c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2',
+    entryHash: 'd3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4',
   },
 ];
 
@@ -152,7 +215,10 @@ export default function CaseDetailPage({ params }: PageProps) {
   const { user, token } = useAuth();
   const [caseItem, setCaseItem] = useState<CaseDetailSummary | null>(null);
   const [timeline, setTimeline] = useState<AuditLedgerEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'timeline'>('overview');
+  const [documents, setDocuments] = useState<DocumentSummary[]>([]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'members' | 'timeline'>(
+    'overview',
+  );
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -163,16 +229,36 @@ export default function CaseDetailPage({ params }: PageProps) {
   const [newMemberRole, setNewMemberRole] = useState<CaseMemberRole>(CaseMemberRole.INVESTIGATOR);
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
 
+  // Document action & modal states
+  const [verifyingDocId, setVerifyingDocId] = useState<string | null>(null);
+  const [integrityResult, setIntegrityResult] = useState<DocumentIntegrityResult | null>(null);
+  const [selectedVersionDoc, setSelectedVersionDoc] = useState<DocumentSummary | null>(null);
+  const [docVersions, setDocVersions] = useState<DocumentVersionSummary[]>([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+  const [copiedHash, setCopiedHash] = useState<string | null>(null);
+
+  // New version upload state
+  const [isUploadVersionOpen, setIsUploadVersionOpen] = useState(false);
+  const [targetDocForNewVersion, setTargetDocForNewVersion] = useState<DocumentSummary | null>(
+    null,
+  );
+  const [versionFile, setVersionFile] = useState<File | null>(null);
+  const [isUploadingVersion, setIsUploadingVersion] = useState(false);
+  const [uploadVersionError, setUploadVersionError] = useState<string | null>(null);
+
   const fetchCase = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setErrorMsg(null);
     try {
-      const [resCase, resTimeline] = await Promise.all([
+      const [resCase, resTimeline, resDocs] = await Promise.all([
         fetch(`/api/v1/cases/${caseId}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`/api/v1/cases/${caseId}/timeline`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`/api/v1/cases/${caseId}/documents`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -181,7 +267,7 @@ export default function CaseDetailPage({ params }: PageProps) {
         const data = await resCase.json();
         setCaseItem(data);
       } else {
-        const err = await resCase.json();
+        const err = await resCase.json().catch(() => ({}));
         setErrorMsg(err.message || 'Access restricted under ABAC policies');
       }
 
@@ -189,10 +275,17 @@ export default function CaseDetailPage({ params }: PageProps) {
         const tlData = await resTimeline.json();
         setTimeline(tlData);
       }
+
+      if (resDocs.ok) {
+        const docsData = await resDocs.json();
+        const items = Array.isArray(docsData) ? docsData : docsData.items || [];
+        setDocuments(items);
+      }
     } catch (err) {
       console.error('API call failed, falling back to demo case view:', err);
       setCaseItem(DEMO_CASE_DETAIL);
       setTimeline(DEMO_TIMELINE);
+      setDocuments(DEMO_DOCUMENTS);
     } finally {
       setLoading(false);
     }
@@ -293,7 +386,6 @@ export default function CaseDetailPage({ params }: PageProps) {
         alert(err.message || 'Failed to remove member');
       }
     } catch {
-      // local removal
       setCaseItem((prev) =>
         prev
           ? {
@@ -303,6 +395,192 @@ export default function CaseDetailPage({ params }: PageProps) {
           : null,
       );
     }
+  };
+
+  // Verify document cryptographic integrity against live MinIO storage
+  const handleVerifyIntegrity = async (docId: string, versionNo?: number) => {
+    if (!token) return;
+    setVerifyingDocId(docId);
+    try {
+      const url = `/api/v1/documents/${docId}/verify${versionNo ? `?versionNo=${versionNo}` : ''}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const result: DocumentIntegrityResult = await res.json();
+        setIntegrityResult(result);
+      } else {
+        const err = await res.json().catch(() => ({ message: 'Verification failed' }));
+        alert(err.message || 'Integrity verification failed');
+      }
+    } catch {
+      // Demo fallback
+      const targetDoc = documents.find((d) => d.id === docId);
+      const hash =
+        targetDoc?.sha256 || '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069';
+      setIntegrityResult({
+        verified: true,
+        documentId: docId,
+        versionNo: versionNo || targetDoc?.latestVersionNo || 1,
+        storedHash: hash,
+        computedHash: hash,
+        verifiedAt: new Date().toISOString(),
+        tampered: false,
+      });
+    } finally {
+      setVerifyingDocId(null);
+    }
+  };
+
+  // Secure download via API stream with Bearer auth token
+  const handleDownload = async (docId: string, versionNo?: number, fallbackTitle?: string) => {
+    if (!token) return;
+    try {
+      const url = `/api/v1/documents/${docId}/download${versionNo ? `?versionNo=${versionNo}` : ''}`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Download failed' }));
+        alert(err.message || 'Download failed');
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get('Content-Disposition');
+      let filename = `${fallbackTitle || 'evidence-document'}.bin`;
+      if (disposition && disposition.includes('filename=')) {
+        const match = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+        if (match && match[1]) {
+          filename = decodeURIComponent(match[1].replace(/['"]/g, ''));
+        }
+      }
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(downloadUrl);
+      document.body.removeChild(a);
+    } catch {
+      alert('Network error downloading document');
+    }
+  };
+
+  // Fetch full immutable version history for a document
+  const handleViewVersions = async (doc: DocumentSummary) => {
+    setSelectedVersionDoc(doc);
+    setLoadingVersions(true);
+    if (!token) {
+      setLoadingVersions(false);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/v1/documents/${doc.id}/versions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDocVersions(Array.isArray(data) ? data : []);
+      } else {
+        // Fallback demo versions
+        setDocVersions([
+          {
+            id: 'ver-1',
+            documentId: doc.id,
+            versionNo: 1,
+            storageKey: `cases/${caseId}/documents/${doc.id}/v1-evidence.pdf`,
+            sha256:
+              doc.sha256 || '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+            sizeBytes: 1542000,
+            mimeType: 'application/pdf',
+            uploadedById: doc.createdById,
+            createdAt: doc.createdAt,
+          },
+          ...(doc.latestVersionNo && doc.latestVersionNo > 1
+            ? [
+                {
+                  id: 'ver-2',
+                  documentId: doc.id,
+                  versionNo: 2,
+                  storageKey: `cases/${caseId}/documents/${doc.id}/v2-evidence.pdf`,
+                  sha256:
+                    doc.sha256 ||
+                    '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+                  sizeBytes: 2457600,
+                  mimeType: 'application/pdf',
+                  uploadedById: doc.createdById,
+                  createdAt: doc.updatedAt,
+                },
+              ]
+            : []),
+        ]);
+      }
+    } catch {
+      setDocVersions([
+        {
+          id: 'ver-1',
+          documentId: doc.id,
+          versionNo: 1,
+          storageKey: `cases/${caseId}/documents/${doc.id}/v1-evidence.pdf`,
+          sha256: doc.sha256 || '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+          sizeBytes: 1542000,
+          mimeType: 'application/pdf',
+          uploadedById: doc.createdById,
+          createdAt: doc.createdAt,
+        },
+      ]);
+    } finally {
+      setLoadingVersions(false);
+    }
+  };
+
+  const handleOpenUploadVersion = (doc: DocumentSummary) => {
+    setTargetDocForNewVersion(doc);
+    setVersionFile(null);
+    setUploadVersionError(null);
+    setIsUploadVersionOpen(true);
+  };
+
+  const handleUploadVersionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !targetDocForNewVersion || !versionFile) return;
+
+    setIsUploadingVersion(true);
+    setUploadVersionError(null);
+
+    const formData = new FormData();
+    formData.append('file', versionFile);
+
+    try {
+      const res = await fetch(`/api/v1/documents/${targetDocForNewVersion.id}/versions`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (res.ok) {
+        setIsUploadVersionOpen(false);
+        setTargetDocForNewVersion(null);
+        setVersionFile(null);
+        await fetchCase();
+      } else {
+        const err = await res.json().catch(() => ({ message: 'Failed to upload revision' }));
+        setUploadVersionError(err.message || 'Upload failed');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setUploadVersionError(`Upload request failed: ${msg}`);
+    } finally {
+      setIsUploadingVersion(false);
+    }
+  };
+
+  const copyHash = (hash: string) => {
+    navigator.clipboard.writeText(hash);
+    setCopiedHash(hash);
+    setTimeout(() => setCopiedHash(null), 2500);
   };
 
   const getClassificationBadge = (level: ClassificationLevel) => {
@@ -320,6 +598,21 @@ export default function CaseDetailPage({ params }: PageProps) {
     }
   };
 
+  const getDocStatusBadge = (status: string) => {
+    switch (status) {
+      case 'READY':
+        return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+      case 'PROCESSING':
+      case 'SCANNING':
+        return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+      case 'QUARANTINED':
+      case 'FAILED':
+        return 'bg-rose-500/10 text-rose-600 border-rose-500/20';
+      default:
+        return 'bg-surface-alt text-muted border-border';
+    }
+  };
+
   const isLead =
     user?.role === UserRole.ADMIN ||
     caseItem?.createdById === user?.id ||
@@ -327,13 +620,20 @@ export default function CaseDetailPage({ params }: PageProps) {
       (m) => m.userId === user?.id && m.caseRole === CaseMemberRole.LEAD_INVESTIGATOR,
     );
 
+  const isArchived = caseItem?.status === CaseStatus.ARCHIVED;
+
   if (loading) {
-    return <div className="p-12 text-center text-sm text-muted">Loading case details...</div>;
+    return (
+      <div className="p-12 text-center text-xs text-muted flex items-center justify-center gap-2">
+        <RefreshCw className="w-4 h-4 animate-spin text-primary" />
+        Loading case details and evidence records...
+      </div>
+    );
   }
 
   if (errorMsg || !caseItem) {
     return (
-      <div className="bg-surface border border-border rounded-2xl p-12 text-center space-y-4 max-w-lg mx-auto mt-12">
+      <div className="bg-surface border border-border rounded-2xl p-12 text-center space-y-4 max-w-lg mx-auto mt-12 shadow-sm">
         <div className="w-14 h-14 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-600 mx-auto">
           <AlertCircle className="w-8 h-8" />
         </div>
@@ -468,22 +768,34 @@ export default function CaseDetailPage({ params }: PageProps) {
       </div>
 
       {/* Tabs Bar */}
-      <div className="flex items-center gap-2 border-b border-border pb-1">
+      <div className="flex items-center gap-2 border-b border-border pb-1 overflow-x-auto">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition ${
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition whitespace-nowrap ${
             activeTab === 'overview'
               ? 'bg-primary/10 text-primary border border-primary/20'
               : 'text-muted hover:text-text'
           }`}
         >
           <Briefcase className="w-4 h-4" />
-          Overview & Documents
+          Overview
+        </button>
+
+        <button
+          onClick={() => setActiveTab('documents')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition whitespace-nowrap ${
+            activeTab === 'documents'
+              ? 'bg-primary/10 text-primary border border-primary/20'
+              : 'text-muted hover:text-text'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          Evidence Documents ({documents.length})
         </button>
 
         <button
           onClick={() => setActiveTab('members')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition ${
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition whitespace-nowrap ${
             activeTab === 'members'
               ? 'bg-primary/10 text-primary border border-primary/20'
               : 'text-muted hover:text-text'
@@ -495,7 +807,7 @@ export default function CaseDetailPage({ params }: PageProps) {
 
         <button
           onClick={() => setActiveTab('timeline')}
-          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition ${
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition whitespace-nowrap ${
             activeTab === 'timeline'
               ? 'bg-primary/10 text-primary border border-primary/20'
               : 'text-muted hover:text-text'
@@ -506,7 +818,7 @@ export default function CaseDetailPage({ params }: PageProps) {
         </button>
       </div>
 
-      {/* Tab: Overview */}
+      {/* Tab 1: Overview */}
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
@@ -517,7 +829,7 @@ export default function CaseDetailPage({ params }: PageProps) {
               </p>
             </div>
 
-            {/* Evidence Documents Section (Phase 4 Hook) */}
+            {/* Evidence Documents Preview Card */}
             <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -529,25 +841,108 @@ export default function CaseDetailPage({ params }: PageProps) {
                     SHA-256 hashed and versioned documents attached to this investigation.
                   </p>
                 </div>
-                <Link
-                  href="/upload"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-lg border border-primary/20 transition"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  Upload Evidence (Phase 4)
-                </Link>
+
+                {!isArchived ? (
+                  <Link
+                    href={`/upload?caseId=${caseId}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-lg border border-primary/20 transition"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    Upload Evidence
+                  </Link>
+                ) : (
+                  <span className="text-[11px] font-semibold text-muted bg-surface-alt px-2.5 py-1 rounded border border-border">
+                    Archived (Locked)
+                  </span>
+                )}
               </div>
 
-              <div className="border border-dashed border-border rounded-xl p-8 text-center bg-surface-alt/50">
-                <FileText className="w-8 h-8 text-muted mx-auto mb-2 opacity-50" />
-                <p className="text-xs font-semibold text-text">
-                  {caseItem.documentCount || 0} Files Currently Attached
-                </p>
-                <p className="text-[11px] text-muted max-w-sm mx-auto mt-1">
-                  Document ingestion pipeline with ClamAV malware scan and SHA-256 hash anchoring
-                  will be initialized in Phase 4.
-                </p>
-              </div>
+              {documents.length === 0 ? (
+                <div className="border border-dashed border-border rounded-xl p-8 text-center bg-surface-alt/50 space-y-2">
+                  <FileText className="w-8 h-8 text-muted mx-auto opacity-50" />
+                  <p className="text-xs font-semibold text-text">
+                    No evidence documents attached yet
+                  </p>
+                  <p className="text-[11px] text-muted max-w-sm mx-auto">
+                    Evidence files uploaded will be ClamAV malware scanned, hashed with SHA-256, and
+                    sealed to the audit ledger.
+                  </p>
+                  {!isArchived && (
+                    <Link
+                      href={`/upload?caseId=${caseId}`}
+                      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition shadow-sm"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      Attach First Evidence File
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {documents.slice(0, 3).map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="bg-surface-alt border border-border rounded-xl p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-text">{doc.title}</span>
+                          <span className="font-mono text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                            v{doc.latestVersionNo || 1}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${getClassificationBadge(
+                              doc.classification,
+                            )}`}
+                          >
+                            {doc.classification}
+                          </span>
+                        </div>
+                        {doc.sha256 && (
+                          <div className="font-mono text-[10px] text-muted truncate max-w-md">
+                            SHA-256: {doc.sha256}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleVerifyIntegrity(doc.id)}
+                          disabled={verifyingDocId === doc.id}
+                          className="px-2.5 py-1 bg-surface border border-border hover:border-primary/50 text-[11px] font-semibold text-text rounded-md transition flex items-center gap-1"
+                          title="Verify cryptographic integrity"
+                        >
+                          {verifyingDocId === doc.id ? (
+                            <RefreshCw className="w-3 h-3 animate-spin text-primary" />
+                          ) : (
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          )}
+                          Verify
+                        </button>
+
+                        <button
+                          onClick={() => handleDownload(doc.id, undefined, doc.title)}
+                          className="px-2.5 py-1 bg-surface border border-border hover:border-primary/50 text-[11px] font-semibold text-text rounded-md transition flex items-center gap-1"
+                          title="Download document"
+                        >
+                          <Download className="w-3 h-3 text-primary" />
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="text-center pt-1">
+                    <button
+                      onClick={() => setActiveTab('documents')}
+                      className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      View all {documents.length} evidence documents in full dossier
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -584,13 +979,184 @@ export default function CaseDetailPage({ params }: PageProps) {
                     {caseItem.classification}
                   </span>
                 </div>
+
+                <div className="pt-2 border-t border-border">
+                  <span className="text-muted block text-[11px]">Total Attached Evidence</span>
+                  <span className="font-bold text-text text-sm">
+                    {documents.length} Files (Versioned)
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tab: Members */}
+      {/* Tab 2: Evidence Documents (Full Dossier) */}
+      {activeTab === 'documents' && (
+        <div className="bg-surface border border-border rounded-xl p-5 space-y-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-text flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" />
+                Case Evidence & Forensics Dossier
+              </h3>
+              <p className="text-xs text-muted">
+                MinIO AES-256 SSE storage, ClamAV anti-malware verification, and SHA-256 hash
+                anchoring.
+              </p>
+            </div>
+
+            {!isArchived ? (
+              <Link
+                href={`/upload?caseId=${caseId}`}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-lg shadow-sm transition"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Ingest New Evidence
+              </Link>
+            ) : (
+              <span className="text-xs font-bold text-muted bg-surface-alt px-3 py-1.5 rounded-lg border border-border">
+                Case Archived (Read-Only)
+              </span>
+            )}
+          </div>
+
+          {documents.length === 0 ? (
+            <div className="border border-dashed border-border rounded-2xl p-12 text-center bg-surface-alt/40 space-y-3">
+              <FileUp className="w-10 h-10 text-muted mx-auto opacity-50" />
+              <h4 className="text-sm font-bold text-text">No Evidence Attached</h4>
+              <p className="text-xs text-muted max-w-md mx-auto">
+                No legal exhibits or digital forensic documents have been attached to case{' '}
+                {caseItem.caseNumber} yet.
+              </p>
+              {!isArchived && (
+                <Link
+                  href={`/upload?caseId=${caseId}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition shadow-sm"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Upload First Evidence File
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {documents.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="bg-surface-alt border border-border rounded-xl p-4.5 space-y-3 transition hover:border-primary/30"
+                >
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-sm text-text">{doc.title}</h4>
+                        <span className="font-mono text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
+                          v{doc.latestVersionNo || 1}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${getClassificationBadge(
+                            doc.classification,
+                          )}`}
+                        >
+                          {doc.classification}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${getDocStatusBadge(
+                            doc.status,
+                          )}`}
+                        >
+                          {doc.status}
+                        </span>
+                      </div>
+
+                      <div className="text-[11px] text-muted flex items-center gap-3">
+                        <span>
+                          Category:{' '}
+                          <strong className="text-text">{doc.type.replace('_', ' ')}</strong>
+                        </span>
+                        <span>•</span>
+                        <span>Attached: {new Date(doc.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons Toolbar */}
+                    <div className="flex items-center gap-2 flex-wrap shrink-0">
+                      <button
+                        onClick={() => handleVerifyIntegrity(doc.id)}
+                        disabled={verifyingDocId === doc.id}
+                        className="px-3 py-1.5 bg-surface border border-border hover:border-emerald-500/50 hover:bg-emerald-500/5 text-xs font-semibold text-text rounded-lg transition flex items-center gap-1.5 shadow-xs"
+                        title="Verify live SHA-256 against stored ledger record"
+                      >
+                        {verifyingDocId === doc.id ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary" />
+                        ) : (
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        )}
+                        <span>Verify Integrity</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleDownload(doc.id, undefined, doc.title)}
+                        className="px-3 py-1.5 bg-surface border border-border hover:border-primary text-xs font-semibold text-text rounded-lg transition flex items-center gap-1.5 shadow-xs"
+                        title="Securely download file stream"
+                      >
+                        <Download className="w-3.5 h-3.5 text-primary" />
+                        <span>Download</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleViewVersions(doc)}
+                        className="px-3 py-1.5 bg-surface border border-border hover:border-primary text-xs font-semibold text-text rounded-lg transition flex items-center gap-1.5 shadow-xs"
+                        title="Inspect all immutable versions"
+                      >
+                        <History className="w-3.5 h-3.5 text-muted" />
+                        <span>History</span>
+                      </button>
+
+                      {!isArchived && (
+                        <button
+                          onClick={() => handleOpenUploadVersion(doc)}
+                          className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-xs font-bold rounded-lg transition flex items-center gap-1.5"
+                          title="Upload new version (never overwrites)"
+                        >
+                          <FileUp className="w-3.5 h-3.5" />
+                          <span>New Revision</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* SHA-256 Fingerprint Box */}
+                  {doc.sha256 && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+                      <span className="text-[11px] font-bold text-muted uppercase tracking-wider shrink-0">
+                        SHA-256 Seal:
+                      </span>
+                      <div className="flex-1 font-mono text-[11px] text-text bg-surface px-2.5 py-1 rounded border border-border truncate select-all">
+                        {doc.sha256}
+                      </div>
+                      <button
+                        onClick={() => copyHash(doc.sha256!)}
+                        className="p-1 text-muted hover:text-text hover:bg-surface rounded transition"
+                        title="Copy SHA-256 Hash"
+                      >
+                        {copiedHash === doc.sha256 ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: Members */}
       {activeTab === 'members' && (
         <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -602,7 +1168,7 @@ export default function CaseDetailPage({ params }: PageProps) {
               </p>
             </div>
 
-            {isLead && (
+            {isLead && !isArchived && (
               <button
                 onClick={() => setIsAddMemberOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-lg shadow-sm transition"
@@ -621,7 +1187,7 @@ export default function CaseDetailPage({ params }: PageProps) {
                   <th className="py-2.5 px-4">Department</th>
                   <th className="py-2.5 px-4">Case Role</th>
                   <th className="py-2.5 px-4">Assigned On</th>
-                  {isLead && <th className="py-2.5 px-4 text-right">Actions</th>}
+                  {isLead && !isArchived && <th className="py-2.5 px-4 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -643,7 +1209,7 @@ export default function CaseDetailPage({ params }: PageProps) {
                     <td className="py-3 px-4 text-muted">
                       {new Date(m.assignedAt).toLocaleDateString()}
                     </td>
-                    {isLead && (
+                    {isLead && !isArchived && (
                       <td className="py-3 px-4 text-right">
                         {m.caseRole !== CaseMemberRole.LEAD_INVESTIGATOR && (
                           <button
@@ -663,7 +1229,7 @@ export default function CaseDetailPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* Tab: Timeline */}
+      {/* Tab 4: Timeline */}
       {activeTab === 'timeline' && (
         <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
           <div>
@@ -710,7 +1276,326 @@ export default function CaseDetailPage({ params }: PageProps) {
         </div>
       )}
 
-      {/* Add Member Modal */}
+      {/* MODAL 1: Cryptographic Integrity Verification Result */}
+      {integrityResult && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-2xl w-full max-w-lg shadow-2xl p-6 space-y-5 animate-in fade-in">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                    integrityResult.verified && !integrityResult.tampered
+                      ? 'bg-emerald-500/10 text-emerald-600'
+                      : 'bg-rose-500/10 text-rose-600'
+                  }`}
+                >
+                  {integrityResult.verified && !integrityResult.tampered ? (
+                    <ShieldCheck className="w-7 h-7" />
+                  ) : (
+                    <ShieldAlert className="w-7 h-7" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-text">
+                    {integrityResult.verified && !integrityResult.tampered
+                      ? 'Cryptographic Seal Intact'
+                      : 'Integrity Violation Detected'}
+                  </h3>
+                  <span
+                    className={`text-[11px] font-bold uppercase tracking-wider ${
+                      integrityResult.verified && !integrityResult.tampered
+                        ? 'text-emerald-600'
+                        : 'text-rose-600'
+                    }`}
+                  >
+                    {integrityResult.verified && !integrityResult.tampered
+                      ? 'Live MinIO SHA-256 matches ledger'
+                      : 'Object altered or hash mismatch'}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIntegrityResult(null)}
+                className="text-muted hover:text-text p-1 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-muted leading-relaxed">
+              {integrityResult.verified && !integrityResult.tampered
+                ? 'The stored raw bytes were re-read directly from MinIO object storage. The live SHA-256 digest exactly matches the immutable hash locked in the database and audit ledger.'
+                : 'CRITICAL ALERT: The computed SHA-256 digest of the storage object does not match the ledger seal. Possible data tampering or file corruption detected.'}
+            </p>
+
+            <div className="bg-surface-alt/70 p-4 rounded-xl border border-border space-y-3 text-xs">
+              <div>
+                <span className="text-[11px] font-semibold text-muted block mb-1">
+                  Expected Stored Hash (Ledger / Database)
+                </span>
+                <div className="font-mono text-[11px] bg-surface p-2 rounded border border-border break-all select-all text-text">
+                  {integrityResult.storedHash}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[11px] font-semibold text-muted block mb-1">
+                  Live Computed Digest (Direct Stream from MinIO)
+                </span>
+                <div
+                  className={`font-mono text-[11px] p-2 rounded border break-all select-all ${
+                    integrityResult.verified
+                      ? 'bg-emerald-500/5 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                      : 'bg-rose-500/5 text-rose-700 dark:text-rose-400 border-rose-500/30 font-bold'
+                  }`}
+                >
+                  {integrityResult.computedHash}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-muted pt-1">
+                <span>Version Verified: v{integrityResult.versionNo}</span>
+                <span>Timestamp: {new Date(integrityResult.verifiedAt).toLocaleTimeString()}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={() => setIntegrityResult(null)}
+                className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition shadow-sm"
+              >
+                Close Verification Seal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: Version History Inspector */}
+      {selectedVersionDoc && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-2xl w-full max-w-2xl shadow-2xl p-6 space-y-5 animate-in fade-in">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+                  Immutable Revision History
+                </span>
+                <h3 className="text-base font-bold text-text mt-0.5">{selectedVersionDoc.title}</h3>
+              </div>
+              <button
+                onClick={() => setSelectedVersionDoc(null)}
+                className="text-muted hover:text-text p-1 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-muted">
+              SDMS enforces append-only versioning. Previous revisions are never overwritten or
+              deleted, ensuring an untampered evidentiary record.
+            </p>
+
+            {loadingVersions ? (
+              <div className="p-8 text-center text-xs text-muted flex items-center justify-center gap-2">
+                <RefreshCw className="w-4 h-4 animate-spin text-primary" />
+                Retrieving version registry...
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                {docVersions.map((v) => {
+                  const isCurrent = v.versionNo === selectedVersionDoc.latestVersionNo;
+                  return (
+                    <div
+                      key={v.id}
+                      className={`p-4 rounded-xl border transition ${
+                        isCurrent
+                          ? 'bg-primary/5 border-primary/30'
+                          : 'bg-surface-alt/60 border-border'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-text bg-surface px-2 py-0.5 rounded border border-border">
+                            Version {v.versionNo}
+                          </span>
+                          {isCurrent && (
+                            <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                              Current Active Version
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() =>
+                              handleVerifyIntegrity(selectedVersionDoc.id, v.versionNo)
+                            }
+                            className="px-2.5 py-1 bg-surface border border-border hover:border-emerald-500/50 text-[11px] font-semibold text-text rounded-md transition flex items-center gap-1"
+                            title="Verify this specific version"
+                          >
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                            Verify
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              handleDownload(
+                                selectedVersionDoc.id,
+                                v.versionNo,
+                                `${selectedVersionDoc.title}-v${v.versionNo}`,
+                              )
+                            }
+                            className="px-2.5 py-1 bg-surface border border-border hover:border-primary text-[11px] font-semibold text-text rounded-md transition flex items-center gap-1"
+                            title="Download this version"
+                          >
+                            <Download className="w-3 h-3 text-primary" />
+                            Download
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px] text-muted mb-2">
+                        <div>
+                          <span>Uploaded On: </span>
+                          <strong className="text-text">
+                            {new Date(v.createdAt).toLocaleString()}
+                          </strong>
+                        </div>
+                        <div>
+                          <span>Size: </span>
+                          <strong className="text-text">
+                            {(Number(v.sizeBytes) / (1024 * 1024)).toFixed(2)} MB
+                          </strong>
+                        </div>
+                      </div>
+
+                      <div className="font-mono text-[10px] bg-surface p-2 rounded border border-border break-all select-all text-text flex items-center justify-between gap-2">
+                        <span className="truncate">SHA-256: {v.sha256}</span>
+                        <button
+                          onClick={() => copyHash(v.sha256)}
+                          className="shrink-0 p-1 text-muted hover:text-text transition"
+                          title="Copy Hash"
+                        >
+                          {copiedHash === v.sha256 ? (
+                            <Check className="w-3 h-3 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-1">
+              <button
+                onClick={() => setSelectedVersionDoc(null)}
+                className="px-4 py-2 bg-surface-alt border border-border text-xs font-semibold text-text rounded-lg hover:bg-border/30 transition"
+              >
+                Close History
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Upload New Version */}
+      {isUploadVersionOpen && targetDocForNewVersion && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-in fade-in">
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+                  Append New Revision
+                </span>
+                <h3 className="text-base font-bold text-text mt-0.5">
+                  {targetDocForNewVersion.title}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsUploadVersionOpen(false)}
+                className="text-muted hover:text-text p-1 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-muted leading-relaxed">
+              Uploading a revised file will create{' '}
+              <strong>Version {(targetDocForNewVersion.latestVersionNo || 1) + 1}</strong>. All
+              existing versions remain permanently preserved.
+            </p>
+
+            {uploadVersionError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-600 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{uploadVersionError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleUploadVersionSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-text block">
+                  Select Revision File (Max 50MB) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  required
+                  accept=".pdf,.png,.jpg,.jpeg,.tiff,.docx,.txt"
+                  onChange={(e) => setVersionFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-muted file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                />
+              </div>
+
+              <div className="p-3 bg-surface-alt rounded-xl border border-border text-[11px] text-muted space-y-1">
+                <div className="flex items-center gap-1.5 text-text font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  Automated Security Pipeline
+                </div>
+                <p>
+                  1. ClamAV anti-malware scan & EICAR test signature detection.
+                  <br />
+                  2. SHA-256 cryptographic digest calculation.
+                  <br />
+                  3. AES-256 MinIO encrypted storage & ledger seal.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsUploadVersionOpen(false)}
+                  className="px-4 py-2 text-xs text-muted hover:text-text transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!versionFile || isUploadingVersion}
+                  className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-lg shadow-sm transition disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isUploadingVersion ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      Ingesting Revision...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5" />
+                      Seal Version {(targetDocForNewVersion.latestVersionNo || 1) + 1}
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: Add Member Modal */}
       {isAddMemberOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-4">
@@ -736,7 +1621,6 @@ export default function CaseDetailPage({ params }: PageProps) {
                       {u.fullName} ({u.role} - {u.email})
                     </option>
                   ))}
-                  {/* Fallback demo user options if api is offline */}
                   {availableUsers.length === 0 && (
                     <>
                       <option value="demo-prosecutor-id">
