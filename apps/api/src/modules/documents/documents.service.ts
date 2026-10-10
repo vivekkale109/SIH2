@@ -28,6 +28,7 @@ import { PolicyService } from '../cases/policy/policy.service';
 import { AuthenticatedUser } from '../auth/interfaces/auth.interface';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { OcrQueue } from '../ocr/ocr.queue';
+import { WatermarkService } from '../sharing/services/watermark.service';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_MIME_TYPES = new Set([
@@ -65,6 +66,7 @@ export class DocumentsService {
     private readonly clamavService: ClamavService,
     private readonly policyService: PolicyService,
     @Optional() private readonly ocrQueue?: OcrQueue,
+    @Optional() private readonly watermarkService?: WatermarkService,
   ) {}
 
   /**
@@ -424,8 +426,8 @@ export class DocumentsService {
       throw new NotFoundException(`Document with ID '${documentId}' not found`);
     }
 
-    const hasAccess = await this.policyService.canAccessCase(user, doc.caseId);
-    if (!hasAccess) {
+    const access = await this.policyService.canAccessDocument(user, documentId);
+    if (!access.granted) {
       throw new ForbiddenException(
         `ABAC Denied: User '${user.email}' is not authorized to inspect document '${documentId}'`,
       );
@@ -445,6 +447,23 @@ export class DocumentsService {
         },
       })
       .catch((err) => this.logger.error('Failed to log document view audit record', err));
+
+    if (access.shareId) {
+      void this.auditService
+        .record({
+          actorId: user.id,
+          action: AuditAction.SHARE_ACCESSED,
+          entityType: 'ShareGrant',
+          entityId: access.shareId,
+          metadata: {
+            resourceType: 'DOCUMENT',
+            resourceId: documentId,
+            action: 'VIEW',
+            scope: access.scope,
+          },
+        })
+        .catch((err) => this.logger.error('Failed to log SHARE_ACCESSED audit record', err));
+    }
 
     return this.mapToDetailSummary(doc);
   }
@@ -550,6 +569,7 @@ export class DocumentsService {
 
   /**
    * Secure download of document version with audit logging and stream output.
+   * If accessed under a share grant, verifies scope !== VIEW_ONLY and applies dynamic forensic watermark.
    */
   async download(
     documentId: string,
@@ -570,10 +590,16 @@ export class DocumentsService {
       throw new NotFoundException(`Document with ID '${documentId}' not found`);
     }
 
-    const hasAccess = await this.policyService.canAccessCase(user, doc.caseId);
-    if (!hasAccess) {
+    const access = await this.policyService.canAccessDocument(user, documentId);
+    if (!access.granted) {
       throw new ForbiddenException(
         `ABAC Denied: User '${user.email}' cannot download document '${documentId}'`,
+      );
+    }
+
+    if (access.scope === 'VIEW_ONLY') {
+      throw new ForbiddenException(
+        `Access Denied: Share grant for this document is restricted to VIEW_ONLY. File download is prohibited.`,
       );
     }
 
@@ -587,8 +613,46 @@ export class DocumentsService {
       );
     }
 
-    const stream = await this.storageService.getStream(targetVersion.storageKey);
     const filename = targetVersion.storageKey.split('/').pop() || `${doc.title}.bin`;
+    let stream: Readable;
+    let sizeBytes = Number(targetVersion.sizeBytes);
+    let mimeType = targetVersion.mimeType;
+
+    // Apply dynamic forensic watermark when accessed under an active share grant
+    if (access.shareId && this.watermarkService) {
+      const rawBuffer = await this.storageService.getBuffer(targetVersion.storageKey);
+      const watermarked = await this.watermarkService.applyWatermark(
+        rawBuffer,
+        targetVersion.mimeType,
+        {
+          userEmail: user.email,
+          badgeNumber: user.badgeNumber,
+          caseNumber: doc.case.caseNumber,
+          documentTitle: doc.title,
+          classification: doc.classification,
+        },
+      );
+      stream = Readable.from(watermarked.buffer);
+      sizeBytes = watermarked.buffer.length;
+      mimeType = watermarked.mimeType;
+
+      void this.auditService
+        .record({
+          actorId: user.id,
+          action: AuditAction.SHARE_ACCESSED,
+          entityType: 'ShareGrant',
+          entityId: access.shareId,
+          metadata: {
+            resourceType: 'DOCUMENT',
+            resourceId: documentId,
+            versionNo: targetVersion.versionNo,
+            action: 'DOWNLOAD',
+          },
+        })
+        .catch((err) => this.logger.error('Failed to log SHARE_ACCESSED audit event', err));
+    } else {
+      stream = await this.storageService.getStream(targetVersion.storageKey);
+    }
 
     // Record download audit event
     void this.auditService
@@ -602,15 +666,116 @@ export class DocumentsService {
           versionNo: targetVersion.versionNo,
           sha256: targetVersion.sha256,
           filename,
+          watermarked: Boolean(access.shareId),
         },
       })
       .catch((err) => this.logger.error('Failed to log document download audit event', err));
 
     return {
       stream,
-      mimeType: targetVersion.mimeType,
+      mimeType,
       filename,
-      sizeBytes: Number(targetVersion.sizeBytes),
+      sizeBytes,
+    };
+  }
+
+  /**
+   * Streams a document with mandatory dynamic forensic watermarking for in-browser preview/view.
+   * Permitted for both VIEW_ONLY and DOWNLOAD scopes.
+   */
+  async preview(
+    documentId: string,
+    versionNo: number | undefined,
+    user: AuthenticatedUser,
+  ): Promise<{ stream: Readable; mimeType: string; filename: string; sizeBytes: number }> {
+    const doc = await this.prisma.document.findUnique({
+      where: { id: documentId },
+      include: {
+        case: true,
+        versions: {
+          orderBy: { versionNo: 'desc' },
+        },
+      },
+    });
+
+    if (!doc) {
+      throw new NotFoundException(`Document with ID '${documentId}' not found`);
+    }
+
+    const access = await this.policyService.canAccessDocument(user, documentId);
+    if (!access.granted) {
+      throw new ForbiddenException(
+        `ABAC Denied: User '${user.email}' is not authorized to preview document '${documentId}'`,
+      );
+    }
+
+    const targetVersion = versionNo
+      ? doc.versions.find((v) => v.versionNo === versionNo)
+      : doc.versions[0];
+
+    if (!targetVersion) {
+      throw new NotFoundException(
+        `Version ${versionNo || 'latest'} not found for document '${documentId}'`,
+      );
+    }
+
+    let buffer = await this.storageService.getBuffer(targetVersion.storageKey);
+    let mimeType = targetVersion.mimeType;
+
+    if (this.watermarkService) {
+      const watermarked = await this.watermarkService.applyWatermark(
+        buffer,
+        targetVersion.mimeType,
+        {
+          userEmail: user.email,
+          badgeNumber: user.badgeNumber,
+          caseNumber: doc.case.caseNumber,
+          documentTitle: doc.title,
+          classification: doc.classification,
+        },
+      );
+      buffer = watermarked.buffer;
+      mimeType = watermarked.mimeType;
+    }
+
+    const filename = targetVersion.storageKey.split('/').pop() || `${doc.title}.bin`;
+
+    if (access.shareId) {
+      void this.auditService
+        .record({
+          actorId: user.id,
+          action: AuditAction.SHARE_ACCESSED,
+          entityType: 'ShareGrant',
+          entityId: access.shareId,
+          metadata: {
+            resourceType: 'DOCUMENT',
+            resourceId: documentId,
+            versionNo: targetVersion.versionNo,
+            action: 'PREVIEW',
+          },
+        })
+        .catch((err) => this.logger.error('Failed to log SHARE_ACCESSED audit record', err));
+    }
+
+    void this.auditService
+      .record({
+        actorId: user.id,
+        action: AuditAction.DOCUMENT_VIEWED,
+        entityType: 'Document',
+        entityId: documentId,
+        metadata: {
+          caseId: doc.caseId,
+          versionNo: targetVersion.versionNo,
+          previewWatermarked: true,
+        },
+      })
+      .catch((err) => this.logger.error('Failed to log document preview audit record', err));
+
+    return {
+      stream: Readable.from(buffer),
+      mimeType,
+      filename,
+      sizeBytes: buffer.length,
     };
   }
 

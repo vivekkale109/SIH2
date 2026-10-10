@@ -169,6 +169,43 @@ export class DocumentsController {
     return new StreamableFile(stream);
   }
 
+  @Get(':id/preview')
+  @ApiOperation({
+    summary: 'Preview watermarked document stream in browser',
+    description:
+      'Streams document with dynamic forensic watermark (user email, badge, timestamp, case number). Allowed for both VIEW_ONLY and DOWNLOAD scopes.',
+  })
+  @ApiQuery({
+    name: 'versionNo',
+    required: false,
+    type: Number,
+    description: 'Specific version number to preview (defaults to latest)',
+  })
+  @ApiResponse({ status: 200, description: 'Inline watermarked stream' })
+  @ApiResponse({ status: 403, description: 'ABAC Access Denied' })
+  @ApiResponse({ status: 404, description: 'Document or version not found' })
+  async preview(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) res: Response,
+    @Query('versionNo') versionNo?: string,
+  ): Promise<StreamableFile> {
+    const vNo = versionNo ? parseInt(versionNo, 10) : undefined;
+    const { stream, mimeType, filename, sizeBytes } = await this.documentsService.preview(
+      id,
+      vNo,
+      user,
+    );
+
+    res.set({
+      'Content-Type': mimeType,
+      'Content-Disposition': `inline; filename="${encodeURIComponent(filename)}"`,
+      'Content-Length': sizeBytes.toString(),
+    });
+
+    return new StreamableFile(stream);
+  }
+
   @Get('cases/:caseId')
   @ApiOperation({
     summary: 'List documents for a case (alias route)',

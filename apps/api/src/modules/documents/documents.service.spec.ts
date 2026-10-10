@@ -25,7 +25,10 @@ describe('DocumentsService', () => {
     getStream: jest.Mock;
     computeSha256: jest.Mock;
   };
-  let policyService: { canAccessCase: jest.Mock };
+  let policyService: {
+    canAccessCase: jest.Mock;
+    canAccessDocument: jest.Mock;
+  };
 
   const mockUser: AuthenticatedUser = {
     id: 'user-investigator-1',
@@ -97,6 +100,7 @@ describe('DocumentsService', () => {
 
     policyService = {
       canAccessCase: jest.fn().mockResolvedValue(true),
+      canAccessDocument: jest.fn().mockResolvedValue({ granted: true, scope: 'FULL' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -451,6 +455,32 @@ describe('DocumentsService', () => {
           action: 'DOCUMENT_DOWNLOADED',
         }),
       );
+    });
+
+    it('should throw ForbiddenException if user only has VIEW_ONLY share clearance', async () => {
+      const doc = {
+        id: 'doc-uuid-1',
+        caseId: 'case-uuid-1',
+        title: 'Forensic Report',
+        case: mockCase,
+        versions: [
+          {
+            versionNo: 1,
+            storageKey: 'k',
+            sha256: 'h',
+            mimeType: 'application/pdf',
+            sizeBytes: 100n,
+          },
+        ],
+      };
+      prisma.document.findUnique.mockResolvedValue(doc);
+      policyService.canAccessDocument.mockResolvedValue({
+        granted: true,
+        scope: 'VIEW_ONLY',
+        shareId: 'share-1',
+      });
+
+      await expect(service.download('doc-uuid-1', 1, mockUser)).rejects.toThrow(ForbiddenException);
     });
   });
 });

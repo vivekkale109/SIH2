@@ -43,6 +43,7 @@ export const Sidebar: React.FC = () => {
           { label: 'Cases & Records', icon: Briefcase, href: '/cases', badge: 'Phase 3' },
           { label: 'Upload Evidence', icon: Upload, href: '/upload', badge: 'Phase 4' },
           { label: 'OCR & Search', icon: Search, href: '/search', badge: 'Phase 5' },
+          { label: 'Controlled Shares', icon: Share2, href: '/shares', badge: 'Phase 6' },
           { label: 'Users & RBAC', icon: Users, href: '/users', badge: 'Admin' },
           { label: 'Departments', icon: Building2, href: '/departments' },
           { label: 'Audit Ledger', icon: ScrollText, href: '/audit', badge: 'Phase 2' },
@@ -60,6 +61,7 @@ export const Sidebar: React.FC = () => {
         return [
           { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
           { label: 'Case Files', icon: Briefcase, href: '/cases', badge: 'Phase 3' },
+          { label: 'Shared with Me', icon: Share2, href: '/shares', badge: 'Phase 6' },
           { label: 'Search Evidence', icon: Search, href: '/search', badge: 'Phase 5' },
           { label: 'Signed Exports', icon: FileCheck2, href: '/exports', badge: 'Phase 7' },
         ];

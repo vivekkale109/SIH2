@@ -174,3 +174,23 @@ export interface ShareGrantSummary {
   revokedAt?: string;
   createdAt: string;
 }
+
+export interface CreateShareGrantDto {
+  resourceType: 'CASE' | 'DOCUMENT';
+  resourceId: string;
+  granteeId?: string;
+  granteeDepartmentId?: string;
+  scope: ShareScope;
+  expiresAt: string;
+  passwordConfirm?: string;
+}
+
+export interface ShareGrantDetailSummary extends ShareGrantSummary {
+  granter?: UserSummary;
+  grantee?: UserSummary;
+  granteeDepartment?: DepartmentSummary;
+  resourceTitle?: string;
+  resourceCaseNumber?: string;
+  isExpired: boolean;
+  isRevoked: boolean;
+}

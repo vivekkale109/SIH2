@@ -205,6 +205,163 @@ export class PolicyService {
   }
 
   /**
+   * Evaluates if a user can access a specific document under ABAC, including direct case clearance,
+   * active case-level shares, and active document-level shares.
+   */
+  async canAccessDocument(
+    user: AuthenticatedUser,
+    documentId: string,
+  ): Promise<{ granted: boolean; scope: 'FULL' | 'DOWNLOAD' | 'VIEW_ONLY'; shareId?: string }> {
+    if (user.role === UserRole.ADMIN || user.role === UserRole.AUDITOR) {
+      return { granted: true, scope: 'FULL' };
+    }
+
+    const doc = await this.prisma.document.findUnique({
+      where: { id: documentId },
+      include: {
+        case: {
+          include: {
+            members: {
+              where: { userId: user.id },
+            },
+          },
+        },
+      },
+    });
+
+    if (!doc) {
+      throw new NotFoundException(`Document with ID '${documentId}' not found`);
+    }
+
+    // 1. Creator of document or case
+    if (doc.createdById === user.id || doc.case.createdById === user.id) {
+      return { granted: true, scope: 'FULL' };
+    }
+
+    // 2. Direct case membership
+    if (doc.case.members.length > 0) {
+      return { granted: true, scope: 'FULL' };
+    }
+
+    // 3. Department clearance for PUBLIC / RESTRICTED
+    if (doc.case.departmentId === user.departmentId) {
+      if (
+        doc.classification === ClassificationLevel.PUBLIC ||
+        doc.classification === ClassificationLevel.RESTRICTED
+      ) {
+        return { granted: true, scope: 'FULL' };
+      }
+    }
+
+    const now = new Date();
+
+    // 4. Case-level active share grant
+    const caseShares = await this.prisma.shareGrant.findMany({
+      where: {
+        resourceType: 'CASE',
+        resourceId: doc.caseId,
+        revokedAt: null,
+        expiresAt: { gt: now },
+        OR: [{ granteeId: user.id }, { granteeDepartmentId: user.departmentId }],
+      },
+    });
+
+    if (caseShares.length > 0) {
+      const best = caseShares.find((s) => s.scope === 'DOWNLOAD') || caseShares[0];
+      return {
+        granted: true,
+        scope: best.scope as 'DOWNLOAD' | 'VIEW_ONLY',
+        shareId: best.id,
+      };
+    }
+
+    // 5. Document-level active share grant
+    const docShares = await this.prisma.shareGrant.findMany({
+      where: {
+        resourceType: 'DOCUMENT',
+        resourceId: documentId,
+        revokedAt: null,
+        expiresAt: { gt: now },
+        OR: [{ granteeId: user.id }, { granteeDepartmentId: user.departmentId }],
+      },
+    });
+
+    if (docShares.length > 0) {
+      const best = docShares.find((s) => s.scope === 'DOWNLOAD') || docShares[0];
+      return {
+        granted: true,
+        scope: best.scope as 'DOWNLOAD' | 'VIEW_ONLY',
+        shareId: best.id,
+      };
+    }
+
+    return { granted: false, scope: 'VIEW_ONLY' };
+  }
+
+  /**
+   * Evaluates if a user is permitted to create a share grant for a given resource.
+   */
+  async canShareResource(
+    user: AuthenticatedUser,
+    resourceType: 'CASE' | 'DOCUMENT',
+    resourceId: string,
+  ): Promise<boolean> {
+    if (user.role === UserRole.ADMIN) {
+      return true;
+    }
+
+    if (resourceType === 'CASE') {
+      const caseItem = await this.prisma.case.findUnique({
+        where: { id: resourceId },
+        include: {
+          members: {
+            where: { userId: user.id },
+          },
+        },
+      });
+
+      if (!caseItem) {
+        throw new NotFoundException(`Case with ID '${resourceId}' not found`);
+      }
+
+      if (caseItem.createdById === user.id) {
+        return true;
+      }
+
+      const member = caseItem.members[0];
+      return member?.caseRole === CaseMemberRole.LEAD_INVESTIGATOR;
+    }
+
+    if (resourceType === 'DOCUMENT') {
+      const doc = await this.prisma.document.findUnique({
+        where: { id: resourceId },
+        include: {
+          case: {
+            include: {
+              members: {
+                where: { userId: user.id },
+              },
+            },
+          },
+        },
+      });
+
+      if (!doc) {
+        throw new NotFoundException(`Document with ID '${resourceId}' not found`);
+      }
+
+      if (doc.createdById === user.id || doc.case.createdById === user.id) {
+        return true;
+      }
+
+      const member = doc.case.members[0];
+      return member?.caseRole === CaseMemberRole.LEAD_INVESTIGATOR;
+    }
+
+    return false;
+  }
+
+  /**
    * Constructs a Prisma WHERE clause enforcing ABAC scoping for case listings and searches.
    */
   buildAbacWhereClause(user: AuthenticatedUser): Prisma.CaseWhereInput {
