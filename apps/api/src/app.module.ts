@@ -14,6 +14,7 @@ import { OcrModule } from './modules/ocr/ocr.module';
 import { SearchModule } from './modules/search/search.module';
 import { SharingModule } from './modules/sharing/sharing.module';
 import { ExportModule } from './modules/export/export.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { ExportModule } from './modules/export/export.module';
     SearchModule,
     SharingModule,
     ExportModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}

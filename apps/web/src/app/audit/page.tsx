@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -15,6 +16,14 @@ import {
   Clock,
   User as UserIcon,
   Code2,
+  Calendar,
+  Download,
+  RotateCcw,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  Database,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -28,7 +37,7 @@ const DEMO_FALLBACK_ENTRIES: AuditLedgerEntry[] = [
   {
     id: 'demo-audit-1',
     sequence: 1,
-    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+    timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
     actorId: 'system',
     action: AuditAction.USER_CREATED,
     entityType: 'User',
@@ -40,7 +49,7 @@ const DEMO_FALLBACK_ENTRIES: AuditLedgerEntry[] = [
   {
     id: 'demo-audit-2',
     sequence: 2,
-    timestamp: new Date(Date.now() - 3600000).toISOString(),
+    timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
     actorId: 'demo-admin-id',
     action: AuditAction.ROLE_ASSIGNED,
     entityType: 'User',
@@ -52,7 +61,7 @@ const DEMO_FALLBACK_ENTRIES: AuditLedgerEntry[] = [
   {
     id: 'demo-audit-3',
     sequence: 3,
-    timestamp: new Date().toISOString(),
+    timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
     actorId: 'demo-investigator-id',
     action: AuditAction.LOGIN_SUCCESS,
     entityType: 'User',
@@ -60,6 +69,56 @@ const DEMO_FALLBACK_ENTRIES: AuditLedgerEntry[] = [
     metadata: { email: 'investigator@police.gov.in', department: 'POL-CCB' },
     prevHash: 'e6b328f9fe585ed553146eba90c9bf11b8722aae64f3f9c6734bf30f6f09ff1c',
     entryHash: '7a9c3d1b8e2f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b',
+  },
+  {
+    id: 'demo-audit-4',
+    sequence: 4,
+    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
+    actorId: 'demo-investigator-id',
+    action: AuditAction.CASE_CREATED,
+    entityType: 'Case',
+    entityId: 'case-demo-1',
+    metadata: {
+      caseNumber: 'FIR-2026-001',
+      title: 'Cyber Fraud Investigation',
+      classification: 'RESTRICTED',
+    },
+    prevHash: '7a9c3d1b8e2f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b',
+    entryHash: 'f4d2a1b9e8c7a6b5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1',
+  },
+  {
+    id: 'demo-audit-5',
+    sequence: 5,
+    timestamp: new Date(Date.now() - 3600000).toISOString(),
+    actorId: 'demo-investigator-id',
+    action: AuditAction.DOCUMENT_UPLOADED,
+    entityType: 'Document',
+    entityId: 'doc-demo-1',
+    metadata: {
+      caseId: 'case-demo-1',
+      title: 'First Information Report (FIR)',
+      sha256: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2',
+      classification: 'RESTRICTED',
+    },
+    prevHash: 'f4d2a1b9e8c7a6b5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1',
+    entryHash: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
+  },
+  {
+    id: 'demo-audit-6',
+    sequence: 6,
+    timestamp: new Date().toISOString(),
+    actorId: 'demo-investigator-id',
+    action: AuditAction.EXPORT_CREATED,
+    entityType: 'ExportPackage',
+    entityId: 'export-demo-1',
+    metadata: {
+      caseId: 'case-demo-1',
+      caseNumber: 'FIR-2026-001',
+      documentCount: 1,
+      signedBy: 'investigator@police.gov.in',
+    },
+    prevHash: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
+    entryHash: '9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e',
   },
 ];
 
@@ -70,10 +129,17 @@ export default function AuditLedgerPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(15);
   const [loading, setLoading] = useState(true);
-  const [selectedAction, setSelectedAction] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // Verification state
+  // Multi-field filters
+  const [selectedAction, setSelectedAction] = useState<string>('');
+  const [selectedEntityType, setSelectedEntityType] = useState<string>('');
+  const [searchEntityId, setSearchEntityId] = useState('');
+  const [searchActorId, setSearchActorId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Verification & Inspection state
   const [verification, setVerification] = useState<AuditVerifyChainResult | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<AuditLedgerEntry | null>(null);
@@ -99,11 +165,10 @@ export default function AuditLedgerPage() {
       setVerifying(false);
     }
 
-    // Fallback verification for demo mode
     setVerification({
       valid: true,
-      totalEntries: 3,
-      lastSequence: 3,
+      totalEntries: DEMO_FALLBACK_ENTRIES.length,
+      lastSequence: DEMO_FALLBACK_ENTRIES.length,
       checkedAt: new Date().toISOString(),
     });
   }, [token]);
@@ -117,7 +182,11 @@ export default function AuditLedgerPage() {
         limit: limit.toString(),
       });
       if (selectedAction) params.append('action', selectedAction);
-      if (searchQuery) params.append('entityId', searchQuery);
+      if (selectedEntityType) params.append('entityType', selectedEntityType);
+      if (searchEntityId) params.append('entityId', searchEntityId);
+      if (searchActorId) params.append('actorId', searchActorId);
+      if (startDate) params.append('startDate', new Date(startDate).toISOString());
+      if (endDate) params.append('endDate', new Date(endDate).toISOString());
 
       const res = await fetch(`/api/v1/audit?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -134,16 +203,29 @@ export default function AuditLedgerPage() {
       setLoading(false);
     }
 
-    // Fallback entries for demo mode
+    // High-fidelity fallback for offline demo
     const filtered = DEMO_FALLBACK_ENTRIES.filter((e) => {
       if (selectedAction && e.action !== selectedAction) return false;
-      if (searchQuery && !e.entityId.toLowerCase().includes(searchQuery.toLowerCase()))
+      if (selectedEntityType && e.entityType !== selectedEntityType) return false;
+      if (searchEntityId && !e.entityId.toLowerCase().includes(searchEntityId.toLowerCase()))
+        return false;
+      if (searchActorId && !e.actorId.toLowerCase().includes(searchActorId.toLowerCase()))
         return false;
       return true;
     });
     setEntries(filtered);
     setTotal(filtered.length);
-  }, [token, page, limit, selectedAction, searchQuery]);
+  }, [
+    token,
+    page,
+    limit,
+    selectedAction,
+    selectedEntityType,
+    searchEntityId,
+    searchActorId,
+    startDate,
+    endDate,
+  ]);
 
   useEffect(() => {
     if (isAuthorized && token) {
@@ -152,17 +234,77 @@ export default function AuditLedgerPage() {
     }
   }, [isAuthorized, token, fetchVerification, fetchEntries]);
 
+  const resetFilters = () => {
+    setSelectedAction('');
+    setSelectedEntityType('');
+    setSearchEntityId('');
+    setSearchActorId('');
+    setStartDate('');
+    setEndDate('');
+    setPage(1);
+  };
+
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedHash(id);
     setTimeout(() => setCopiedHash(null), 2000);
   };
 
+  const exportToJson = () => {
+    const dataStr =
+      'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(entries, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute('href', dataStr);
+    dlAnchor.setAttribute(
+      'download',
+      `audit_ledger_export_${new Date().toISOString().slice(0, 10)}.json`,
+    );
+    dlAnchor.click();
+  };
+
+  const exportToCsv = () => {
+    const headers = [
+      'Sequence',
+      'Timestamp',
+      'ActorId',
+      'Action',
+      'EntityType',
+      'EntityId',
+      'PrevHash',
+      'EntryHash',
+    ];
+    const rows = entries.map((e) => [
+      e.sequence,
+      e.timestamp,
+      e.actorId,
+      e.action,
+      e.entityType,
+      e.entityId,
+      e.prevHash,
+      e.entryHash,
+    ]);
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute('href', encodeURI(csvContent));
+    dlAnchor.setAttribute(
+      'download',
+      `audit_ledger_export_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+    dlAnchor.click();
+  };
+
   const getActionBadgeClass = (action: string) => {
     if (action.includes('SUCCESS') || action.includes('VERIFIED')) {
       return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
     }
-    if (action.includes('FAILED') || action.includes('DISABLED') || action.includes('CORRUPTED')) {
+    if (
+      action.includes('FAILED') ||
+      action.includes('DISABLED') ||
+      action.includes('CORRUPTED') ||
+      action.includes('REVOKED')
+    ) {
       return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
     }
     if (action.includes('CREATED') || action.includes('ASSIGNED')) {
@@ -179,361 +321,442 @@ export default function AuditLedgerPage() {
         </div>
         <h2 className="text-xl font-bold text-text">Access Restricted</h2>
         <p className="text-muted text-sm max-w-md mt-1">
-          The immutable hash-chained audit ledger is restricted to authorized Auditors and System
-          Administrators under CCTNS / BSA 2023 compliance regulations.
+          The immutable hash-chained audit ledger is restricted to users with the{' '}
+          <span className="font-semibold text-text">AUDITOR</span> or{' '}
+          <span className="font-semibold text-text">ADMIN</span> role.
         </p>
+        <Link
+          href="/"
+          className="mt-6 inline-flex items-center space-x-2 bg-primary text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors"
+        >
+          <span>Return to Dashboard</span>
+        </Link>
       </div>
     );
   }
 
-  const totalPages = Math.ceil(total / limit) || 1;
+  const activeFiltersCount =
+    (selectedAction ? 1 : 0) +
+    (selectedEntityType ? 1 : 0) +
+    (searchEntityId ? 1 : 0) +
+    (searchActorId ? 1 : 0) +
+    (startDate ? 1 : 0) +
+    (endDate ? 1 : 0);
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Header Banner */}
+      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-text flex items-center gap-2">
-            <Layers className="w-7 h-7 text-primary" />
-            Append-Only Audit Ledger
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-primary/15 text-primary font-mono uppercase">
+              Phase 8 Feature
+            </span>
+            <span className="text-xs text-muted">• Full Audit Explorer & Log Viewer</span>
+          </div>
+          <h1 className="text-2xl font-bold text-text mt-2 flex items-center space-x-2.5">
+            <Layers className="h-7 w-7 text-primary" />
+            <span>Immutable Hash-Chained Audit Ledger Explorer</span>
           </h1>
-          <p className="text-sm text-muted mt-0.5">
-            Cryptographically sealed, hash-chained activity record satisfying BSA 2023 §61–63
-            tamper-evidence standards.
+          <p className="text-muted text-sm mt-1 max-w-2xl">
+            Append-only cryptographic transaction log. Every operation is serialized via PostgreSQL
+            advisory transaction locks, hashed with canonical SHA-256, and chained to previous
+            transactions.
           </p>
         </div>
-        <button
-          onClick={fetchVerification}
-          disabled={verifying}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-surface-alt border border-border hover:bg-border/30 transition text-text shadow-sm"
-        >
-          <RefreshCw className={`w-4 h-4 ${verifying ? 'animate-spin text-primary' : ''}`} />
-          {verifying ? 'Verifying Integrity...' : 'Verify Cryptographic Chain'}
-        </button>
+
+        <div className="flex items-center space-x-2.5 shrink-0 flex-wrap">
+          <button
+            onClick={exportToJson}
+            className="inline-flex items-center space-x-1.5 bg-surface hover:bg-surface-alt border border-border text-text text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>JSON</span>
+          </button>
+          <button
+            onClick={exportToCsv}
+            className="inline-flex items-center space-x-1.5 bg-surface hover:bg-surface-alt border border-border text-text text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>CSV</span>
+          </button>
+          <Link
+            href="/integrity"
+            className="inline-flex items-center space-x-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-colors shadow-sm"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Chain Integrity Report</span>
+          </Link>
+        </div>
       </div>
 
-      {/* Verification Status Banner */}
-      <div
-        className={`p-5 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 transition ${
-          verification?.valid
-            ? 'bg-emerald-500/5 border-emerald-500/30'
-            : 'bg-rose-500/5 border-rose-500/30'
-        }`}
-      >
-        <div className="flex items-start gap-4">
-          <div
-            className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-              verification?.valid
-                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-            }`}
-          >
-            {verification?.valid ? (
-              <ShieldCheck className="w-7 h-7" />
-            ) : (
-              <ShieldAlert className="w-7 h-7" />
-            )}
-          </div>
+      {/* Cryptographic Chain Integrity Status Bar */}
+      <div className="bg-surface border border-border rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3">
+          {verification?.valid ? (
+            <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          ) : (
+            <div className="p-2 bg-rose-500/10 text-rose-600 rounded-lg">
+              <XCircle className="w-5 h-5" />
+            </div>
+          )}
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-text text-base">
-                {verification?.valid
-                  ? 'Ledger Chain Verified & Intact'
-                  : 'Chain Corruption Detected'}
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold text-text">
+                {verification?.valid ? 'CRYPTOGRAPHIC CHAIN VERIFIED' : 'INTEGRITY ALERT'}
               </span>
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full font-mono font-semibold ${
-                  verification?.valid
-                    ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-rose-500/20 text-rose-700 dark:text-rose-300'
-                }`}
-              >
-                {verification?.valid ? 'VALID' : 'TAMPERED'}
+              <span className="text-[10px] font-mono text-muted">
+                {verification?.totalEntries || 0} Sequences Verified
               </span>
             </div>
-            <p className="text-xs text-muted mt-1">
+            <p className="text-xs text-muted">
               {verification?.valid
-                ? `All ${verification.totalEntries} entries verified via recursive SHA-256 canonical JSON hash pointer checks with zero sequence gaps.`
-                : verification?.message ||
-                  'Hash pointer or sequence mismatch found in ledger history.'}
+                ? 'Monotonic sequences and SHA-256 hash pointers intact without gaps or tampering.'
+                : verification?.message || 'Hash chain discrepancy detected.'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-6 text-xs text-muted border-t md:border-t-0 md:border-l border-border pt-3 md:pt-0 md:pl-6">
-          <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider">Total Blocks</div>
-            <div className="text-base font-bold text-text font-mono">
-              {verification?.totalEntries ?? 0}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider">Last Sequence</div>
-            <div className="text-base font-bold text-text font-mono">
-              #{String(verification?.lastSequence ?? 0).padStart(5, '0')}
-            </div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase font-mono tracking-wider">Algorithm</div>
-            <div className="text-xs font-semibold text-text font-mono">SHA-256 Chained</div>
-          </div>
-        </div>
+        <button
+          onClick={fetchVerification}
+          disabled={verifying}
+          className="inline-flex items-center space-x-1.5 text-xs text-primary font-semibold hover:underline shrink-0"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${verifying ? 'animate-spin' : ''}`} />
+          <span>{verifying ? 'Checking...' : 'Re-verify Hashes'}</span>
+        </button>
       </div>
 
-      {/* Filters and Search */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface p-3 rounded-lg border border-border">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-muted" />
-            <input
-              type="text"
-              placeholder="Search by Entity ID..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPage(1);
-              }}
-              className="w-full bg-background border border-border rounded-md pl-9 pr-3 py-1.5 text-xs text-text placeholder-muted focus:outline-none focus:border-primary"
-            />
-          </div>
-          <div className="relative">
-            <select
-              value={selectedAction}
-              onChange={(e) => {
-                setSelectedAction(e.target.value);
-                setPage(1);
-              }}
-              className="bg-background border border-border rounded-md px-3 py-1.5 text-xs text-text focus:outline-none focus:border-primary"
+      {/* Multi-Field Search & Filter Panel */}
+      <div className="bg-surface border border-border rounded-xl p-4 shadow-sm space-y-3">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="flex items-center space-x-2 w-full md:w-auto flex-1">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted" />
+              <input
+                type="text"
+                placeholder="Search by Entity ID (UUID or Case Number)..."
+                value={searchEntityId}
+                onChange={(e) => setSearchEntityId(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-surface-alt border border-border rounded-lg text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
+                showFilters || activeFiltersCount > 0
+                  ? 'bg-primary/10 border-primary/30 text-primary'
+                  : 'bg-surface-alt border-border text-muted hover:text-text'
+              }`}
             >
-              <option value="">All Actions ({total})</option>
-              <option value={AuditAction.LOGIN_SUCCESS}>LOGIN_SUCCESS</option>
-              <option value={AuditAction.LOGIN_FAILED}>LOGIN_FAILED</option>
-              <option value={AuditAction.MFA_VERIFIED}>MFA_VERIFIED</option>
-              <option value={AuditAction.MFA_FAILED}>MFA_FAILED</option>
-              <option value={AuditAction.USER_CREATED}>USER_CREATED</option>
-              <option value={AuditAction.USER_UPDATED}>USER_UPDATED</option>
-              <option value={AuditAction.USER_DISABLED}>USER_DISABLED</option>
-              <option value={AuditAction.ROLE_ASSIGNED}>ROLE_ASSIGNED</option>
-              <option value={AuditAction.LOGOUT}>LOGOUT</option>
-            </select>
+              <Filter className="w-3.5 h-3.5" />
+              <span>Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}</span>
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-2 w-full md:w-auto shrink-0 justify-between md:justify-end">
+            <span className="text-xs text-muted font-mono">{total} Total Logged Events</span>
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={resetFilters}
+                className="inline-flex items-center space-x-1 text-xs text-muted hover:text-danger transition-colors font-medium ml-2"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="text-xs text-muted self-end sm:self-auto font-mono">
-          Page {page} of {totalPages} ({total} entries)
-        </div>
+        {/* Expandable Advanced Filter Fields */}
+        {showFilters && (
+          <div className="pt-3 border-t border-border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-text mb-1">Action Type</label>
+              <select
+                value={selectedAction}
+                onChange={(e) => setSelectedAction(e.target.value)}
+                className="w-full text-xs bg-surface-alt border border-border rounded-lg p-1.5 text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">All Actions</option>
+                {Object.values(AuditAction).map((act) => (
+                  <option key={act} value={act}>
+                    {act}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-text mb-1">Entity Type</label>
+              <select
+                value={selectedEntityType}
+                onChange={(e) => setSelectedEntityType(e.target.value)}
+                className="w-full text-xs bg-surface-alt border border-border rounded-lg p-1.5 text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">All Entities</option>
+                <option value="Case">Case</option>
+                <option value="Document">Document</option>
+                <option value="User">User</option>
+                <option value="ShareGrant">ShareGrant</option>
+                <option value="ExportPackage">ExportPackage</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-text mb-1">Actor ID</label>
+              <input
+                type="text"
+                placeholder="User UUID or 'system'..."
+                value={searchActorId}
+                onChange={(e) => setSearchActorId(e.target.value)}
+                className="w-full text-xs bg-surface-alt border border-border rounded-lg p-1.5 text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-text mb-1">Date Range</label>
+              <div className="flex items-center space-x-1.5">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-1/2 text-xs bg-surface-alt border border-border rounded-lg p-1.5 text-text"
+                />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-1/2 text-xs bg-surface-alt border border-border rounded-lg p-1.5 text-text"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Ledger Table */}
-      <div className="bg-surface rounded-xl border border-border overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-surface-alt/70 text-muted font-mono uppercase text-[11px] border-b border-border">
-              <tr>
-                <th className="py-3 px-4">Seq</th>
-                <th className="py-3 px-4">Timestamp</th>
-                <th className="py-3 px-4">Action</th>
-                <th className="py-3 px-4">Actor</th>
-                <th className="py-3 px-4">Entity</th>
-                <th className="py-3 px-4">Previous Hash</th>
-                <th className="py-3 px-4">Entry Hash</th>
-                <th className="py-3 px-4 text-right">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {loading ? (
+      {/* Audit Log Table */}
+      <div className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm">
+        {loading ? (
+          <div className="p-12 text-center">
+            <RefreshCw className="w-6 h-6 text-primary animate-spin mx-auto mb-2" />
+            <p className="text-xs text-muted">Retrieving cryptographic audit events...</p>
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="p-12 text-center">
+            <Database className="w-8 h-8 text-muted mx-auto mb-2" />
+            <p className="text-sm font-semibold text-text">No Audit Entries Found</p>
+            <p className="text-xs text-muted mt-1 max-w-sm mx-auto">
+              No transactions match the selected filter parameters. Try clearing your filters or
+              broadening your search criteria.
+            </p>
+            <button
+              onClick={resetFilters}
+              className="mt-4 text-xs text-primary font-semibold hover:underline"
+            >
+              Clear all filters
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface-alt text-muted uppercase font-mono text-[10px] border-b border-border">
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-muted">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-primary" />
-                    Loading verified ledger entries...
-                  </td>
+                  <th className="p-3 w-16 text-center">Seq</th>
+                  <th className="p-3">Timestamp (UTC)</th>
+                  <th className="p-3">Action</th>
+                  <th className="p-3">Entity</th>
+                  <th className="p-3">Actor</th>
+                  <th className="p-3">Entry SHA-256 Hash</th>
+                  <th className="p-3 text-right">Details</th>
                 </tr>
-              ) : entries.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-muted">
-                    No audit records found matching your filters.
-                  </td>
-                </tr>
-              ) : (
-                entries.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-surface-alt/40 transition">
-                    <td className="py-3 px-4 font-mono font-bold text-primary">
-                      #{String(entry.sequence).padStart(5, '0')}
+              </thead>
+              <tbody className="divide-y divide-border">
+                {entries.map((entry) => (
+                  <tr key={entry.id} className="hover:bg-surface-alt/30 transition-colors">
+                    <td className="p-3 text-center font-mono font-bold text-primary">
+                      #{entry.sequence}
                     </td>
-                    <td className="py-3 px-4 font-mono text-muted whitespace-nowrap">
+                    <td className="p-3 font-mono text-muted whitespace-nowrap">
                       {new Date(entry.timestamp).toLocaleString()}
                     </td>
-                    <td className="py-3 px-4 whitespace-nowrap">
+                    <td className="p-3">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${getActionBadgeClass(
+                        className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border font-mono ${getActionBadgeClass(
                           entry.action,
                         )}`}
                       >
                         {entry.action}
                       </span>
                     </td>
-                    <td className="py-3 px-4 font-mono text-text">
-                      <div className="flex items-center gap-1.5">
-                        <UserIcon className="w-3.5 h-3.5 text-muted" />
-                        <span className="truncate max-w-[120px]" title={entry.actorId}>
-                          {entry.actorId}
+                    <td className="p-3">
+                      <div className="font-semibold text-text">{entry.entityType}</div>
+                      <div className="font-mono text-[10px] text-muted truncate max-w-[140px]">
+                        {entry.entityId}
+                      </div>
+                    </td>
+                    <td className="p-3 font-mono text-muted truncate max-w-[120px]">
+                      {entry.actorId}
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center space-x-1.5 bg-surface-alt px-2 py-1 rounded border border-border w-fit font-mono text-[11px] text-muted">
+                        <span>
+                          {entry.entryHash.slice(0, 12)}...{entry.entryHash.slice(-8)}
                         </span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap text-text">
-                      <span className="font-semibold text-muted text-[11px]">
-                        {entry.entityType}:
-                      </span>{' '}
-                      <span className="font-mono text-[11px]">
-                        {entry.entityId.substring(0, 8)}...
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-muted whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <span title={entry.prevHash}>{entry.prevHash.substring(0, 8)}...</span>
                         <button
-                          onClick={() => copyToClipboard(entry.prevHash, `prev-${entry.id}`)}
-                          className="hover:text-text transition"
-                          title="Copy previous hash"
+                          onClick={() => copyToClipboard(entry.entryHash, entry.id)}
+                          className="hover:text-text transition-colors p-0.5"
+                          title="Copy SHA-256"
                         >
-                          {copiedHash === `prev-${entry.id}` ? (
-                            <Check className="w-3.5 h-3.5 text-success" />
+                          {copiedHash === entry.id ? (
+                            <Check className="w-3 h-3 text-emerald-500" />
                           ) : (
-                            <Copy className="w-3.5 h-3.5" />
+                            <Copy className="w-3 h-3" />
                           )}
                         </button>
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-mono text-text whitespace-nowrap font-semibold">
-                      <div className="flex items-center gap-1.5">
-                        <span title={entry.entryHash}>{entry.entryHash.substring(0, 8)}...</span>
-                        <button
-                          onClick={() => copyToClipboard(entry.entryHash, `entry-${entry.id}`)}
-                          className="hover:text-primary transition"
-                          title="Copy entry hash"
-                        >
-                          {copiedHash === `entry-${entry.id}` ? (
-                            <Check className="w-3.5 h-3.5 text-success" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="p-3 text-right">
                       <button
                         onClick={() => setSelectedEntry(entry)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded bg-surface-alt hover:bg-border/40 text-text border border-border transition"
+                        className="inline-flex items-center space-x-1 bg-surface-alt hover:bg-surface border border-border text-text text-[11px] font-semibold px-2.5 py-1 rounded transition-colors"
                       >
-                        <Code2 className="w-3 h-3 text-muted" />
-                        Payload
+                        <Code2 className="w-3 h-3 text-primary" />
+                        <span>Inspect</span>
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        {/* Pagination Footer */}
-        {totalPages > 1 && (
-          <div className="p-3 border-t border-border flex items-center justify-between text-xs">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="px-3 py-1.5 rounded bg-surface-alt border border-border disabled:opacity-40 text-text hover:bg-border/30 transition"
-            >
-              Previous
-            </button>
-            <div className="text-muted font-mono">
-              Page {page} of {totalPages}
+        {/* Pagination bar */}
+        {total > limit && (
+          <div className="p-3 border-t border-border bg-surface-alt/40 flex items-center justify-between">
+            <span className="text-xs text-muted">
+              Page {page} of {Math.ceil(total / limit) || 1} ({total} items)
+            </span>
+            <div className="flex items-center space-x-2">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage(page - 1)}
+                className="p-1 rounded bg-surface border border-border text-text disabled:opacity-40 hover:bg-surface-alt transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                disabled={page * limit >= total}
+                onClick={() => setPage(page + 1)}
+                className="p-1 rounded bg-surface border border-border text-text disabled:opacity-40 hover:bg-surface-alt transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="px-3 py-1.5 rounded bg-surface-alt border border-border disabled:opacity-40 text-text hover:bg-border/30 transition"
-            >
-              Next
-            </button>
           </div>
         )}
       </div>
 
-      {/* Canonical JSON Payload Modal */}
+      {/* Entry JSON Metadata Inspector Modal */}
       {selectedEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-          <div className="bg-surface border border-border rounded-xl shadow-xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface border border-border rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="p-4 border-b border-border flex items-center justify-between bg-surface-alt">
-              <div>
-                <h3 className="text-sm font-bold text-text flex items-center gap-2">
-                  <Code2 className="w-4 h-4 text-primary" />
-                  Canonical Ledger Entry #{String(selectedEntry.sequence).padStart(5, '0')}
-                </h3>
-                <p className="text-[11px] text-muted font-mono">{selectedEntry.id}</p>
+              <div className="flex items-center space-x-2">
+                <Code2 className="w-5 h-5 text-primary" />
+                <div>
+                  <h3 className="text-sm font-bold text-text">
+                    Audit Ledger Sequence #{selectedEntry.sequence}
+                  </h3>
+                  <p className="text-[11px] text-muted font-mono">{selectedEntry.action}</p>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedEntry(null)}
-                className="text-muted hover:text-text p-1"
+                className="p-1 rounded-lg text-muted hover:text-text hover:bg-surface transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-4 space-y-4 overflow-y-auto text-xs">
-              <div className="grid grid-cols-2 gap-3 bg-surface-alt/40 p-3 rounded-lg border border-border font-mono">
+            <div className="p-5 overflow-y-auto space-y-4 text-xs font-mono">
+              <div className="grid grid-cols-2 gap-3 bg-surface-alt p-3 rounded-lg border border-border">
                 <div>
-                  <span className="text-muted block text-[10px]">ACTION</span>
-                  <span className="font-bold text-text">{selectedEntry.action}</span>
-                </div>
-                <div>
-                  <span className="text-muted block text-[10px]">TIMESTAMP</span>
-                  <span className="text-text">{selectedEntry.timestamp}</span>
-                </div>
-                <div>
-                  <span className="text-muted block text-[10px]">ACTOR ID</span>
-                  <span className="text-text truncate block">{selectedEntry.actorId}</span>
-                </div>
-                <div>
-                  <span className="text-muted block text-[10px]">ENTITY</span>
-                  <span className="text-text">
-                    {selectedEntry.entityType}: {selectedEntry.entityId}
+                  <span className="text-muted block text-[10px] uppercase font-bold">
+                    Timestamp
                   </span>
+                  <span className="text-text">
+                    {new Date(selectedEntry.timestamp).toISOString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted block text-[10px] uppercase font-bold">Actor ID</span>
+                  <span className="text-text">{selectedEntry.actorId}</span>
+                </div>
+                <div>
+                  <span className="text-muted block text-[10px] uppercase font-bold">
+                    Entity Type
+                  </span>
+                  <span className="text-text">{selectedEntry.entityType}</span>
+                </div>
+                <div>
+                  <span className="text-muted block text-[10px] uppercase font-bold">
+                    Entity ID
+                  </span>
+                  <span className="text-text truncate block">{selectedEntry.entityId}</span>
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-mono text-muted uppercase tracking-wider block mb-1">
-                  Previous Block Hash (prevHash)
-                </label>
-                <div className="p-2.5 rounded bg-background border border-border font-mono text-[11px] break-all text-muted">
+                <span className="text-muted block text-[10px] uppercase font-bold mb-1">
+                  Previous Hash Pointer (prevHash)
+                </span>
+                <div className="bg-surface-alt border border-border p-2 rounded text-muted text-[11px] break-all">
                   {selectedEntry.prevHash}
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-mono text-muted uppercase tracking-wider block mb-1">
-                  Current Entry Cryptographic Hash (entryHash)
-                </label>
-                <div className="p-2.5 rounded bg-background border border-primary/30 font-mono text-[11px] break-all text-primary font-semibold">
+                <span className="text-muted block text-[10px] uppercase font-bold mb-1">
+                  Canonical Block SHA-256 (entryHash)
+                </span>
+                <div className="bg-surface-alt border border-border p-2 rounded text-primary text-[11px] break-all">
                   {selectedEntry.entryHash}
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-mono text-muted uppercase tracking-wider block mb-1">
-                  Metadata & Event Payload (JSON)
-                </label>
-                <pre className="p-3 rounded bg-background border border-border font-mono text-[11px] overflow-x-auto text-text">
+                <span className="text-muted block text-[10px] uppercase font-bold mb-1">
+                  Metadata Payload JSON
+                </span>
+                <pre className="bg-surface-alt border border-border p-3 rounded text-[11px] text-text overflow-x-auto whitespace-pre-wrap">
                   {JSON.stringify(selectedEntry.metadata, null, 2)}
                 </pre>
               </div>
             </div>
 
-            <div className="p-3 border-t border-border flex justify-end bg-surface-alt">
+            <div className="p-3 border-t border-border bg-surface-alt flex justify-between items-center">
+              <button
+                onClick={() =>
+                  copyToClipboard(JSON.stringify(selectedEntry, null, 2), 'entry-json')
+                }
+                className="inline-flex items-center space-x-1.5 text-xs text-primary font-semibold hover:underline"
+              >
+                {copiedHash === 'entry-json' ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-500" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                <span>Copy Full Entry JSON</span>
+              </button>
+
               <button
                 onClick={() => setSelectedEntry(null)}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-primary text-text-inverse hover:bg-primary-hover transition"
+                className="bg-surface hover:bg-surface-alt border border-border text-text text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors"
               >
                 Close
               </button>
