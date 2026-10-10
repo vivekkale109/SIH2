@@ -13,6 +13,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { OcrModule } from './modules/ocr/ocr.module';
 import { SearchModule } from './modules/search/search.module';
 import { SharingModule } from './modules/sharing/sharing.module';
+import { ExportModule } from './modules/export/export.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { SharingModule } from './modules/sharing/sharing.module';
     OcrModule,
     SearchModule,
     SharingModule,
+    ExportModule,
   ],
 })
 export class AppModule {}

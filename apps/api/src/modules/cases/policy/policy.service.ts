@@ -382,4 +382,30 @@ export class PolicyService {
       ],
     };
   }
+
+  /**
+   * Evaluates if a user is authorized under ABAC to create a verifiable signed export package for a case.
+   */
+  async canExportCase(user: AuthenticatedUser, caseId: string): Promise<boolean> {
+    if (user.role === UserRole.ADMIN) {
+      return true;
+    }
+
+    const hasAccess = await this.canAccessCase(user, caseId);
+    if (!hasAccess) {
+      return false;
+    }
+
+    // Role-based export permissions (Prosecutor, Investigator, Court Officer, Records Manager)
+    if (
+      user.role === UserRole.PROSECUTOR ||
+      user.role === UserRole.INVESTIGATOR ||
+      user.role === UserRole.COURT_OFFICER ||
+      user.role === UserRole.RECORDS_MANAGER
+    ) {
+      return true;
+    }
+
+    return false;
+  }
 }

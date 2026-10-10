@@ -194,3 +194,113 @@ export interface ShareGrantDetailSummary extends ShareGrantSummary {
   isExpired: boolean;
   isRevoked: boolean;
 }
+
+export interface ExportManifestDocument {
+  id: string;
+  title: string;
+  type: string;
+  classification: ClassificationLevel;
+  versionNo: number;
+  relativePath: string;
+  sha256: string;
+  sizeBytes: number;
+  mimeType: string;
+}
+
+export interface ExportManifestAuditEntry {
+  sequence: number;
+  timestamp: string;
+  actorId: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  prevHash: string;
+  entryHash: string;
+}
+
+export interface EvidenceCertificate {
+  statutoryBasis: string;
+  certificationDate: string;
+  declarantName: string;
+  declarantDesignation: string;
+  declarantDepartment: string;
+  declarantBadge?: string;
+  caseNumber: string;
+  systemName: string;
+  hashAlgorithm: string;
+  statement: string;
+}
+
+export interface ExportManifest {
+  manifestVersion: string;
+  packageId: string;
+  case: {
+    id: string;
+    caseNumber: string;
+    title: string;
+    classification: ClassificationLevel;
+    departmentId: string;
+  };
+  exportedAt: string;
+  exportedBy: {
+    id: string;
+    fullName: string;
+    email: string;
+    badgeNumber?: string;
+    role: UserRole;
+    departmentId: string;
+  };
+  evidenceCertificate: EvidenceCertificate;
+  documents: ExportManifestDocument[];
+  auditTrail: ExportManifestAuditEntry[];
+  manifestHash: string;
+  signature: string;
+  publicKey: string;
+}
+
+export interface ExportPackageSummary {
+  id: string;
+  caseId: string;
+  manifestHash: string;
+  signature: string;
+  createdById: string;
+  createdAt: string;
+  createdBy?: UserSummary;
+  case?: CaseSummary;
+  documentCount?: number;
+  fileSizeBytes?: number;
+  downloadUrl?: string;
+}
+
+export interface CreateExportDto {
+  documentIds?: string[];
+  passwordConfirm?: string;
+  notes?: string;
+}
+
+export interface PackageVerificationDocumentCheck {
+  title: string;
+  relativePath: string;
+  expectedHash: string;
+  computedHash: string;
+  match: boolean;
+}
+
+export interface PackageVerificationResult {
+  verified: boolean;
+  status:
+    'VALID' | 'TAMPERED_MANIFEST' | 'TAMPERED_DOCUMENT' | 'INVALID_SIGNATURE' | 'CORRUPTED_PACKAGE';
+  packageId?: string;
+  caseNumber?: string;
+  caseTitle?: string;
+  exportedAt?: string;
+  exportedBy?: string;
+  signerPublicKey?: string;
+  signatureValid: boolean;
+  manifestHashValid: boolean;
+  documentsChecked: PackageVerificationDocumentCheck[];
+  auditChainValid: boolean;
+  certificateText?: string;
+  errors: string[];
+  warnings: string[];
+}

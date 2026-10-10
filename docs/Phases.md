@@ -184,13 +184,13 @@
 
 **Tasks**
 
-- [ ] Export builder: documents plus `manifest.json` (file hashes, versions, metadata, audit extract)
-- [ ] Ed25519 signing; key management via env/secret manager; key-generation script
-- [ ] Evidence certificate template aligned to BSA 2023 §61–63 (content to be reviewed by a legal advisor)
-- [ ] `ExportPackage` model plus ledger entry
-- [ ] Standalone verifier (`packages/verifier` CLI plus web verify page)
-- [ ] Re-auth required for export
-- [ ] UI: export request, history, download, verify
+- [x] Export builder: documents plus `manifest.json` (file hashes, versions, metadata, audit extract)
+- [x] Ed25519 signing; key management via env/secret manager; key-generation script
+- [x] Evidence certificate template aligned to BSA 2023 §61–63 (content to be reviewed by a legal advisor)
+- [x] `ExportPackage` model plus ledger entry
+- [x] Standalone verifier (`packages/verifier` CLI plus web verify page)
+- [x] Re-auth required for export
+- [x] UI: export request, history, download, verify
 
 **Exit criteria**
 
