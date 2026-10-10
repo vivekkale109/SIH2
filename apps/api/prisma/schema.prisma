@@ -171,6 +171,7 @@ model Document {
   classification   ClassificationLevel @default(RESTRICTED)
   status           DocumentStatus      @default(PROCESSING)
   currentVersionId String?
+  processingError  String?
   createdById      String
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
@@ -207,14 +208,15 @@ model DocumentVersion {
 }
 
 model OcrResult {
-  id            String    @id @default(uuid())
-  versionId     String    @unique
-  extractedText String    @db.Text
-  confidence    Float?
-  verifiedById  String?
-  verifiedAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String    @id @default(uuid())
+  versionId         String    @unique
+  extractedText     String    @db.Text
+  confidence        Float?
+  extractedMetadata Json?     @default("{}")
+  verifiedById      String?
+  verifiedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   version DocumentVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
 

@@ -10,6 +10,8 @@ import { AuditModule } from './modules/audit/audit.module';
 import { CasesModule } from './modules/cases/cases.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { OcrModule } from './modules/ocr/ocr.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { DocumentsModule } from './modules/documents/documents.module';
     CasesModule,
     StorageModule,
     DocumentsModule,
+    OcrModule,
+    SearchModule,
   ],
 })
 export class AppModule {}

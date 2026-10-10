@@ -70,6 +70,7 @@ export interface DocumentSummary {
   currentVersionId?: string;
   latestVersionNo?: number;
   sha256?: string;
+  processingError?: string | null;
   createdById: string;
   createdAt: string;
   updatedAt: string;
@@ -86,6 +87,26 @@ export interface DocumentVersionSummary {
   uploadedById: string;
   createdAt: string;
   uploadedBy?: UserSummary;
+  ocrResult?: OcrResultSummary;
+}
+
+export interface OcrResultSummary {
+  id: string;
+  versionId: string;
+  extractedText: string;
+  confidence: number | null;
+  extractedMetadata?: {
+    detectedType?: string;
+    dates?: string[];
+    caseNumbers?: string[];
+    entities?: Array<{ role: string; name: string }>;
+    sections?: string[];
+    [key: string]: unknown;
+  } | null;
+  verifiedById?: string | null;
+  verifiedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DocumentDetailSummary extends DocumentSummary {
@@ -93,6 +114,42 @@ export interface DocumentDetailSummary extends DocumentSummary {
   createdBy?: UserSummary;
   currentVersion?: DocumentVersionSummary;
   versions: DocumentVersionSummary[];
+  ocrResult?: OcrResultSummary;
+}
+
+export interface SearchResultItem {
+  documentId: string;
+  caseId: string;
+  caseNumber: string;
+  caseTitle: string;
+  title: string;
+  type: string;
+  classification: ClassificationLevel;
+  status: DocumentStatus;
+  versionNo: number;
+  sha256?: string;
+  sizeBytes?: number;
+  createdAt: string;
+  snippet?: string;
+  matchScore?: number;
+  extractedMetadata?: Record<string, unknown> | null;
+  ocrConfidence?: number | null;
+}
+
+export interface SearchResultsResponse {
+  results: SearchResultItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  query: string;
+}
+
+export interface UpdateOcrVerificationDto {
+  extractedText?: string;
+  type?: string;
+  classification?: ClassificationLevel;
+  extractedMetadata?: Record<string, unknown>;
 }
 
 export interface DocumentIntegrityResult {

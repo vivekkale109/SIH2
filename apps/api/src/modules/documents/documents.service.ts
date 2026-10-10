@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { Prisma, CaseStatus, DocumentStatus } from '@prisma/client';
 import * as crypto from 'crypto';
@@ -26,6 +27,7 @@ import { ClamavService } from '../storage/clamav.service';
 import { PolicyService } from '../cases/policy/policy.service';
 import { AuthenticatedUser } from '../auth/interfaces/auth.interface';
 import { CreateDocumentDto } from './dto/create-document.dto';
+import { OcrQueue } from '../ocr/ocr.queue';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_MIME_TYPES = new Set([
@@ -45,6 +47,7 @@ type DocumentWithRelations = Prisma.DocumentGetPayload<{
     versions: {
       include: {
         uploadedBy: true;
+        ocrResult: true;
       };
       orderBy: { versionNo: 'asc' };
     };
@@ -61,6 +64,7 @@ export class DocumentsService {
     private readonly storageService: StorageService,
     private readonly clamavService: ClamavService,
     private readonly policyService: PolicyService,
+    @Optional() private readonly ocrQueue?: OcrQueue,
   ) {}
 
   /**
@@ -170,7 +174,7 @@ export class DocumentsService {
         data: { currentVersionId: version.id },
       });
 
-      return doc;
+      return { doc, version };
     });
 
     // 7. Audit Ledger Recording (chained immutable events)
@@ -179,10 +183,10 @@ export class DocumentsService {
         actorId: user.id,
         action: AuditAction.DOCUMENT_UPLOADED,
         entityType: 'Document',
-        entityId: createdDocument.id,
+        entityId: createdDocument.doc.id,
         metadata: {
           caseId,
-          documentId: createdDocument.id,
+          documentId: createdDocument.doc.id,
           versionNo: 1,
           sha256,
           filename: file.originalname,
@@ -198,7 +202,7 @@ export class DocumentsService {
         actorId: user.id,
         action: AuditAction.DOCUMENT_INGESTED,
         entityType: 'Document',
-        entityId: createdDocument.id,
+        entityId: createdDocument.doc.id,
         metadata: {
           caseId,
           sha256,
@@ -208,9 +212,18 @@ export class DocumentsService {
       .catch((err) => this.logger.error('Failed to log document ingestion audit entry', err));
 
     this.logger.log(
-      `Ingested document '${createdDocument.title}' (v1) into case ${caseId} by ${user.email}`,
+      `Ingested document '${createdDocument.doc.title}' (v1) into case ${caseId} by ${user.email}`,
     );
-    return this.getDocumentById(createdDocument.id, user);
+
+    if (this.ocrQueue) {
+      void this.ocrQueue
+        .addDocumentProcessingJob(createdDocument.doc.id, createdDocument.version.id)
+        .catch((err) =>
+          this.logger.error(`Failed to enqueue OCR for ${createdDocument.doc.id}`, err),
+        );
+    }
+
+    return this.getDocumentById(createdDocument.doc.id, user);
   }
 
   /**
@@ -292,8 +305,8 @@ export class DocumentsService {
     });
 
     // Append new version in DB and point currentVersionId to it
-    await this.prisma.$transaction(async (tx) => {
-      const newVersion = await tx.documentVersion.create({
+    const newVersion = await this.prisma.$transaction(async (tx) => {
+      const version = await tx.documentVersion.create({
         data: {
           documentId,
           versionNo: nextVersionNo,
@@ -307,8 +320,10 @@ export class DocumentsService {
 
       await tx.document.update({
         where: { id: documentId },
-        data: { currentVersionId: newVersion.id },
+        data: { currentVersionId: version.id },
       });
+
+      return version;
     });
 
     // Record in audit ledger
@@ -333,6 +348,13 @@ export class DocumentsService {
     this.logger.log(
       `Created version ${nextVersionNo} for document '${doc.title}' by ${user.email}`,
     );
+
+    if (this.ocrQueue) {
+      void this.ocrQueue
+        .addDocumentProcessingJob(documentId, newVersion.id)
+        .catch((err) => this.logger.error(`Failed to enqueue OCR for ${documentId}`, err));
+    }
+
     return this.getDocumentById(documentId, user);
   }
 
@@ -370,6 +392,7 @@ export class DocumentsService {
         currentVersionId: d.currentVersionId || undefined,
         latestVersionNo: latestVer?.versionNo,
         sha256: latestVer?.sha256,
+        processingError: d.processingError,
         createdById: d.createdById,
         createdAt: d.createdAt.toISOString(),
         updatedAt: d.updatedAt.toISOString(),
@@ -391,7 +414,7 @@ export class DocumentsService {
         case: true,
         createdBy: true,
         versions: {
-          include: { uploadedBy: true },
+          include: { uploadedBy: true, ocrResult: true },
           orderBy: { versionNo: 'asc' },
         },
       },
@@ -620,6 +643,19 @@ export class DocumentsService {
       mimeType: v.mimeType,
       uploadedById: v.uploadedById,
       createdAt: v.createdAt.toISOString(),
+      ocrResult: v.ocrResult
+        ? {
+            id: v.ocrResult.id,
+            versionId: v.ocrResult.versionId,
+            extractedText: v.ocrResult.extractedText,
+            confidence: v.ocrResult.confidence,
+            extractedMetadata: v.ocrResult.extractedMetadata as Record<string, unknown> | null,
+            verifiedById: v.ocrResult.verifiedById,
+            verifiedAt: v.ocrResult.verifiedAt ? v.ocrResult.verifiedAt.toISOString() : null,
+            createdAt: v.ocrResult.createdAt.toISOString(),
+            updatedAt: v.ocrResult.updatedAt.toISOString(),
+          }
+        : undefined,
       uploadedBy: v.uploadedBy
         ? {
             id: v.uploadedBy.id,
@@ -649,10 +685,12 @@ export class DocumentsService {
       currentVersionId: doc.currentVersionId || undefined,
       latestVersionNo: currentVersion?.versionNo,
       sha256: currentVersion?.sha256,
+      processingError: doc.processingError,
       createdById: doc.createdById,
       createdAt: doc.createdAt.toISOString(),
       updatedAt: doc.updatedAt.toISOString(),
       currentVersion,
+      ocrResult: currentVersion?.ocrResult,
       versions,
       case: doc.case
         ? {
