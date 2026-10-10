@@ -20,6 +20,7 @@ export interface AuthenticatedUser {
   role: UserRole;
   departmentId: string;
   authTime: number;
+  badgeNumber?: string;
 }
 
 export type LoginResponse =

@@ -31,6 +31,9 @@ import {
   RefreshCw,
   HardDrive,
   Lock,
+  Share2,
+  Eye,
+  Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -45,7 +48,11 @@ import {
   DocumentVersionSummary,
   DocumentIntegrityResult,
   DocumentStatus,
+  ShareScope,
+  ShareGrantDetailSummary,
 } from '@sdms/shared-types';
+import { ShareModal } from '@/components/sharing/ShareModal';
+import { WatermarkPreviewModal } from '@/components/sharing/WatermarkPreviewModal';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -216,9 +223,9 @@ export default function CaseDetailPage({ params }: PageProps) {
   const [caseItem, setCaseItem] = useState<CaseDetailSummary | null>(null);
   const [timeline, setTimeline] = useState<AuditLedgerEntry[]>([]);
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'members' | 'timeline'>(
-    'overview',
-  );
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'documents' | 'members' | 'timeline' | 'shares'
+  >('overview');
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -236,6 +243,24 @@ export default function CaseDetailPage({ params }: PageProps) {
   const [docVersions, setDocVersions] = useState<DocumentVersionSummary[]>([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
+
+  // Controlled Sharing and Watermark states (Phase 6)
+  const [caseShares, setCaseShares] = useState<ShareGrantDetailSummary[]>([]);
+  const [loadingShares, setLoadingShares] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareModalResource, setShareModalResource] = useState<{
+    type: 'CASE' | 'DOCUMENT';
+    id: string;
+    title: string;
+  } | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<{
+    id: string;
+    title: string;
+    mimeType?: string;
+    scope: ShareScope;
+    caseNumber?: string;
+  } | null>(null);
+  const [revokingShareId, setRevokingShareId] = useState<string | null>(null);
 
   // New version upload state
   const [isUploadVersionOpen, setIsUploadVersionOpen] = useState(false);
@@ -294,6 +319,57 @@ export default function CaseDetailPage({ params }: PageProps) {
   useEffect(() => {
     fetchCase();
   }, [fetchCase]);
+
+  // Fetch active shares for this case
+  const fetchCaseShares = useCallback(async () => {
+    if (!token || !caseId) return;
+    setLoadingShares(true);
+    try {
+      const res = await fetch(`/api/v1/shares?resourceId=${caseId}&status=ALL`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCaseShares(data);
+      }
+    } catch {
+      // fallback
+    } finally {
+      setLoadingShares(false);
+    }
+  }, [token, caseId]);
+
+  useEffect(() => {
+    fetchCaseShares();
+  }, [fetchCaseShares]);
+
+  const handleRevokeShare = async (shareId: string) => {
+    if (!token) return;
+    if (
+      !confirm(
+        'Are you sure you want to revoke this share grant immediately? Access will be revoked in real time.',
+      )
+    ) {
+      return;
+    }
+    setRevokingShareId(shareId);
+    try {
+      const res = await fetch(`/api/v1/shares/${shareId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        fetchCaseShares();
+      } else {
+        const err = await res.json().catch(() => ({ message: 'Revocation failed' }));
+        alert(err.message || 'Failed to revoke share grant');
+      }
+    } catch {
+      alert('Network error while revoking share');
+    } finally {
+      setRevokingShareId(null);
+    }
+  };
 
   // Fetch users for member assignment
   useEffect(() => {
@@ -732,6 +808,20 @@ export default function CaseDetailPage({ params }: PageProps) {
                   Reopen Case
                 </button>
               )}
+
+            {!isArchived && (
+              <button
+                onClick={() => {
+                  setShareModalResource({ type: 'CASE', id: caseItem.id, title: caseItem.title });
+                  setIsShareModalOpen(true);
+                }}
+                className="px-3.5 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-xs"
+                title="Create a scoped time-limited share grant for this case"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>Share Case</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -815,6 +905,18 @@ export default function CaseDetailPage({ params }: PageProps) {
         >
           <ScrollText className="w-4 h-4" />
           Audit Timeline ({timeline.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('shares')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition whitespace-nowrap ${
+            activeTab === 'shares'
+              ? 'bg-primary/10 text-primary border border-primary/20'
+              : 'text-muted hover:text-text'
+          }`}
+        >
+          <Share2 className="w-4 h-4" />
+          Controlled Shares ({caseShares.length})
         </button>
       </div>
 
@@ -1114,6 +1216,41 @@ export default function CaseDetailPage({ params }: PageProps) {
                         <span>History</span>
                       </button>
 
+                      <button
+                        onClick={() =>
+                          setPreviewDoc({
+                            id: doc.id,
+                            title: doc.title,
+                            mimeType: (doc as any).mimeType || 'application/pdf',
+                            scope: ShareScope.DOWNLOAD,
+                            caseNumber: caseItem?.caseNumber,
+                          })
+                        }
+                        className="px-3 py-1.5 bg-surface border border-border hover:border-primary text-xs font-semibold text-text rounded-lg transition flex items-center gap-1.5 shadow-xs"
+                        title="Preview with dynamic forensic watermark"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-primary" />
+                        <span>Preview</span>
+                      </button>
+
+                      {!isArchived && (
+                        <button
+                          onClick={() => {
+                            setShareModalResource({
+                              type: 'DOCUMENT',
+                              id: doc.id,
+                              title: doc.title,
+                            });
+                            setIsShareModalOpen(true);
+                          }}
+                          className="px-3 py-1.5 bg-surface border border-border hover:border-purple-500 text-xs font-semibold text-text rounded-lg transition flex items-center gap-1.5 shadow-xs"
+                          title="Share document across departments"
+                        >
+                          <Share2 className="w-3.5 h-3.5 text-purple-600" />
+                          <span>Share</span>
+                        </button>
+                      )}
+
                       {!isArchived && (
                         <button
                           onClick={() => handleOpenUploadVersion(doc)}
@@ -1273,6 +1410,142 @@ export default function CaseDetailPage({ params }: PageProps) {
               ))
             )}
           </div>
+        </div>
+      )}
+
+      {/* Tab 5: Controlled Shares (Phase 6) */}
+      {activeTab === 'shares' && (
+        <div className="bg-surface border border-border rounded-xl p-5 space-y-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-text flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-primary" />
+                Active Case Shares & Access Grants
+              </h3>
+              <p className="text-xs text-muted">
+                Scoped, time-limited cross-department access grants for case {caseItem.caseNumber}{' '}
+                and its exhibits.
+              </p>
+            </div>
+
+            {!isArchived && (
+              <button
+                onClick={() => {
+                  setShareModalResource({ type: 'CASE', id: caseId, title: caseItem.title });
+                  setIsShareModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-lg shadow-sm transition"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                Grant New Share
+              </button>
+            )}
+          </div>
+
+          {loadingShares ? (
+            <div className="p-8 text-center text-xs text-muted flex items-center justify-center gap-2">
+              <RefreshCw className="w-4 h-4 animate-spin text-primary" />
+              Retrieving case share grants...
+            </div>
+          ) : caseShares.length === 0 ? (
+            <div className="border border-dashed border-border rounded-2xl p-10 text-center bg-surface-alt/40 space-y-3">
+              <Share2 className="w-8 h-8 text-muted mx-auto opacity-50" />
+              <h4 className="text-sm font-bold text-text">No Active Shares for this Case</h4>
+              <p className="text-xs text-muted max-w-sm mx-auto">
+                This investigation case has not been shared with external departments or officers
+                yet.
+              </p>
+              {!isArchived && (
+                <button
+                  onClick={() => {
+                    setShareModalResource({ type: 'CASE', id: caseId, title: caseItem.title });
+                    setIsShareModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-semibold rounded-lg"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  Create First Share
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-border text-[11px] font-bold text-muted uppercase tracking-wider bg-surface-alt/50">
+                    <th className="py-2.5 px-3">Resource</th>
+                    <th className="py-2.5 px-3">Recipient</th>
+                    <th className="py-2.5 px-3">Scope</th>
+                    <th className="py-2.5 px-3">Expiration</th>
+                    <th className="py-2.5 px-3">Status</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {caseShares.map((s) => (
+                    <tr key={s.id} className="hover:bg-surface-alt/40 transition">
+                      <td className="py-3 px-3">
+                        <span className="font-semibold text-text">
+                          {s.resourceType} • {s.resourceTitle || s.resourceId.slice(0, 8)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="font-semibold text-text">
+                          {s.grantee?.fullName ||
+                            s.granteeDepartment?.name ||
+                            s.granteeDepartmentId ||
+                            'Recipient'}
+                        </div>
+                        <div className="text-[11px] text-muted">
+                          {s.grantee?.email || (s.granteeDepartmentId ? 'Department Scope' : '')}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            s.scope === ShareScope.DOWNLOAD
+                              ? 'bg-purple-500/10 text-purple-600 border border-purple-500/20'
+                              : 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
+                          }`}
+                        >
+                          {s.scope}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-mono text-[11px] text-muted">
+                        {new Date(s.expiresAt).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-3">
+                        {s.isRevoked ? (
+                          <span className="text-[10px] font-bold text-rose-600 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+                            REVOKED
+                          </span>
+                        ) : s.isExpired ? (
+                          <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                            EXPIRED
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                            ACTIVE
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        {!s.isRevoked && !s.isExpired && (
+                          <button
+                            onClick={() => handleRevokeShare(s.id)}
+                            disabled={revokingShareId === s.id}
+                            className="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 border border-rose-500/20 rounded text-xs font-semibold transition"
+                          >
+                            {revokingShareId === s.id ? 'Revoking...' : 'Revoke'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -1664,6 +1937,36 @@ export default function CaseDetailPage({ params }: PageProps) {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Controlled Share Creation Modal */}
+      {isShareModalOpen && (
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => {
+            setIsShareModalOpen(false);
+            setShareModalResource(null);
+          }}
+          onSuccess={() => {
+            fetchCaseShares();
+          }}
+          prefilledResourceType={shareModalResource?.type || 'CASE'}
+          prefilledResourceId={shareModalResource?.id || caseId}
+          prefilledResourceTitle={shareModalResource?.title || caseItem?.title || ''}
+        />
+      )}
+
+      {/* Forensic Watermark Inline Preview Modal */}
+      {previewDoc && (
+        <WatermarkPreviewModal
+          isOpen={true}
+          onClose={() => setPreviewDoc(null)}
+          documentId={previewDoc.id}
+          documentTitle={previewDoc.title}
+          mimeType={previewDoc.mimeType}
+          scope={previewDoc.scope}
+          caseNumber={previewDoc.caseNumber || caseItem?.caseNumber}
+        />
       )}
     </div>
   );

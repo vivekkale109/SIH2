@@ -19,6 +19,7 @@ import {
   ScrollText,
   Upload,
   Search,
+  Share2,
 } from 'lucide-react';
 import { ClassificationBadge, Badge } from '@/components/ui/Badge';
 import { ClassificationLevel } from '@sdms/shared-types';
@@ -33,14 +34,14 @@ export default function HomePage() {
       port: '4000',
       icon: Server,
       status: 'Online',
-      desc: 'Auth, MFA, Users, Cases, Documents, OCR & Search',
+      desc: 'Auth, MFA, Users, Cases, Documents, OCR, Search & Sharing',
     },
     {
       name: 'PostgreSQL Database',
       port: '5432',
       icon: Database,
       status: 'Seeded & Active',
-      desc: 'FTS GIN indexes, Users, Cases, Documents, Audit Ledger',
+      desc: 'FTS GIN indexes, Users, Cases, Documents, Share Grants, Audit Ledger',
     },
     {
       name: 'MinIO Object Storage',
@@ -48,6 +49,13 @@ export default function HomePage() {
       icon: HardDrive,
       status: 'Connected',
       desc: 'S3-compatible AES-256 SSE object store',
+    },
+    {
+      name: 'Forensic Watermarking',
+      port: 'Sharp + PDF-Lib',
+      icon: ShieldCheck,
+      status: 'Active',
+      desc: 'Dynamic stamping: viewer email, badge, timestamp & case ID',
     },
     {
       name: 'Redis + BullMQ',
@@ -65,7 +73,7 @@ export default function HomePage() {
         <div>
           <div className="flex items-center space-x-2">
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-success/15 text-success font-mono uppercase">
-              Phase 5 Operational
+              Phase 6 Operational
             </span>
             <span className="text-xs text-muted">• Smart India Hackathon 2026 (PS ID 26190)</span>
           </div>
@@ -74,13 +82,13 @@ export default function HomePage() {
           </h1>
           <p className="text-muted text-sm mt-1 max-w-2xl">
             Case-centric legal evidence platform with granular RBAC/ABAC, SHA-256 integrity,
-            append-only hash-chained ledger, Tesseract OCR search, and BSA 2023 §61–63 signed
-            exports.
+            append-only hash-chained ledger, Tesseract OCR search, time-limited controlled sharing,
+            and dynamic forensic watermarking.
           </p>
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="success" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
-            OCR & Full-Text Search Active
+            Sharing & Watermarks Active
           </Badge>
         </div>
       </div>
@@ -140,6 +148,13 @@ export default function HomePage() {
             >
               <ScrollText className="w-3.5 h-3.5 text-primary" />
               <span>Audit Ledger</span>
+            </Link>
+            <Link
+              href="/shares"
+              className="inline-flex items-center space-x-1.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-600 dark:text-purple-400 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span>Controlled Shares</span>
             </Link>
           </div>
         </div>

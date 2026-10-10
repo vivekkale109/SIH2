@@ -163,13 +163,13 @@
 
 **Tasks**
 
-- [ ] `ShareGrant` model; create, list, revoke
-- [ ] Scope: view-only vs download; expiry date and time
-- [ ] Expiry enforced at access time (not only by cron)
-- [ ] Re-auth required to create shares
-- [ ] Dynamic watermark (user, timestamp, case ID) on view and download (PDF/image)
-- [ ] Ledger events: `SHARE_CREATED`, `SHARE_REVOKED`, `SHARE_ACCESSED`
-- [ ] UI: share dialog, "shared with me", active shares management
+- [x] `ShareGrant` model; create, list, revoke
+- [x] Scope: view-only vs download; expiry date and time
+- [x] Expiry enforced at access time (not only by cron)
+- [x] Re-auth required to create shares
+- [x] Dynamic watermark (user, timestamp, case ID) on view and download (PDF/image)
+- [x] Ledger events: `SHARE_CREATED`, `SHARE_REVOKED`, `SHARE_ACCESSED`
+- [x] UI: share dialog, "shared with me", active shares management
 
 **Exit criteria**
 
