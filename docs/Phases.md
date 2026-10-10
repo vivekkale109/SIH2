@@ -205,12 +205,12 @@
 
 **Tasks**
 
-- [ ] Role-specific dashboards (recent cases, pending verifications, expiring shares)
-- [ ] Audit log viewer (filters by user, action, date, entity) for Auditor/Admin
-- [ ] Integrity report page (chain status, last verification, failed checks)
-- [ ] Records Manager: retention and lifecycle settings
-- [ ] Accessibility pass (WCAG 2.1 AA checks), responsive fixes
-- [ ] Empty, loading, and error states everywhere
+- [x] Role-specific dashboards (recent cases, pending verifications, expiring shares)
+- [x] Audit log viewer (filters by user, action, date, entity) for Auditor/Admin
+- [x] Integrity report page (chain status, last verification, failed checks)
+- [x] Records Manager: retention and lifecycle settings
+- [x] Accessibility pass (WCAG 2.1 AA checks), responsive fixes
+- [x] Empty, loading, and error states everywhere
 
 **Exit criteria**
 

@@ -304,3 +304,71 @@ export interface PackageVerificationResult {
   errors: string[];
   warnings: string[];
 }
+
+export interface DashboardStats {
+  overview: {
+    totalCases: number;
+    activeCases: number;
+    closedCases: number;
+    archivedCases: number;
+    totalDocuments: number;
+    totalExports: number;
+    activeSharesCount: number;
+    expiringSharesCount: number;
+    auditLedgerTotal: number;
+    auditChainValid: boolean;
+    quarantinedCount?: number;
+  };
+  classificationCounts: {
+    PUBLIC: number;
+    RESTRICTED: number;
+    CONFIDENTIAL: number;
+    SECRET: number;
+  };
+  pendingVerifications?: {
+    documentsNeedingReview: number;
+    ocrPendingCount: number;
+  };
+  recentCases: Array<{
+    id: string;
+    caseNumber: string;
+    title: string;
+    status: string;
+    classification: string;
+    createdAt: string;
+    documentCount: number;
+  }>;
+  expiringShares: Array<{
+    id: string;
+    resourceType: string;
+    resourceId: string;
+    caseNumber?: string;
+    caseTitle?: string;
+    documentTitle?: string;
+    scope: string;
+    granteeEmail?: string;
+    expiresAt: string;
+    timeRemainingFormatted: string;
+    isUrgent: boolean;
+  }>;
+  recentAuditLogs: Array<{
+    id: string;
+    sequence: number;
+    action: string;
+    actorEmail?: string;
+    entityType: string;
+    entityId: string;
+    timestamp: string;
+  }>;
+}
+
+export interface RetentionPolicy {
+  id: string;
+  category: string;
+  classification: string;
+  statuteReference: string;
+  retentionYears: number;
+  description: string;
+  autoArchive: boolean;
+  archivalAction: 'ARCHIVE' | 'PERMANENT_PRESERVE' | 'REVIEW_REQUIRED';
+}
