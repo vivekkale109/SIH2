@@ -18,6 +18,7 @@ import {
   Briefcase,
   ScrollText,
   Upload,
+  Search,
 } from 'lucide-react';
 import { ClassificationBadge, Badge } from '@/components/ui/Badge';
 import { ClassificationLevel } from '@sdms/shared-types';
@@ -32,14 +33,14 @@ export default function HomePage() {
       port: '4000',
       icon: Server,
       status: 'Online',
-      desc: 'Auth, MFA, Users, Health, and Swagger at /api/docs',
+      desc: 'Auth, MFA, Users, Cases, Documents, OCR & Search',
     },
     {
       name: 'PostgreSQL Database',
       port: '5432',
       icon: Database,
       status: 'Seeded & Active',
-      desc: 'Users, Departments, Tokens, Audit Ledger schema',
+      desc: 'FTS GIN indexes, Users, Cases, Documents, Audit Ledger',
     },
     {
       name: 'MinIO Object Storage',
@@ -53,7 +54,7 @@ export default function HomePage() {
       port: '6379',
       icon: Layers,
       status: 'Connected',
-      desc: 'Async worker queue backend for OCR and hashing',
+      desc: 'Async worker queue for OCR recognition & text extraction',
     },
   ];
 
@@ -64,7 +65,7 @@ export default function HomePage() {
         <div>
           <div className="flex items-center space-x-2">
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-success/15 text-success font-mono uppercase">
-              Phase 4 Operational
+              Phase 5 Operational
             </span>
             <span className="text-xs text-muted">• Smart India Hackathon 2026 (PS ID 26190)</span>
           </div>
@@ -73,12 +74,13 @@ export default function HomePage() {
           </h1>
           <p className="text-muted text-sm mt-1 max-w-2xl">
             Case-centric legal evidence platform with granular RBAC/ABAC, SHA-256 integrity,
-            append-only hash-chained ledger, and BSA 2023 §61–63 signed exports.
+            append-only hash-chained ledger, Tesseract OCR search, and BSA 2023 §61–63 signed
+            exports.
           </p>
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="success" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
-            MinIO SSE & SHA-256 Active
+            OCR & Full-Text Search Active
           </Badge>
         </div>
       </div>
@@ -112,10 +114,17 @@ export default function HomePage() {
 
           <div className="flex items-center space-x-2 shrink-0 flex-wrap">
             <Link
-              href="/cases"
+              href="/search"
               className="inline-flex items-center space-x-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-colors"
             >
-              <Briefcase className="w-3.5 h-3.5" />
+              <Search className="w-3.5 h-3.5" />
+              <span>OCR & Search</span>
+            </Link>
+            <Link
+              href="/cases"
+              className="inline-flex items-center space-x-1.5 bg-surface hover:bg-surface-alt border border-border text-text text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Briefcase className="w-3.5 h-3.5 text-primary" />
               <span>Browse Cases</span>
             </Link>
             <Link
@@ -131,13 +140,6 @@ export default function HomePage() {
             >
               <ScrollText className="w-3.5 h-3.5 text-primary" />
               <span>Audit Ledger</span>
-            </Link>
-            <Link
-              href="/mfa"
-              className="inline-flex items-center space-x-1.5 bg-surface hover:bg-surface-alt border border-border text-text text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <QrCode className="w-3.5 h-3.5 text-primary" />
-              <span>2FA</span>
             </Link>
           </div>
         </div>
@@ -234,18 +236,18 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Next Step: Phase 2 Banner */}
+      {/* Next Step: Phase 6 Banner */}
       <div className="bg-surface-alt border border-border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-semibold text-primary uppercase tracking-wider">
             Up Next
           </span>
           <h3 className="text-base font-bold text-text mt-0.5">
-            Phase 4: Secure Document Upload & Versioning
+            Phase 6: Controlled Sharing and Dynamic Watermarking
           </h3>
           <p className="text-xs text-muted mt-1">
-            MinIO encrypted object storage, ClamAV anti-malware streaming scan, SHA-256 integrity
-            digests, and immutable document versioning.
+            ShareGrant model with view-only vs download scopes, dynamic forensic watermarking (user,
+            timestamp, case ID), and time-limited access enforcement.
           </p>
         </div>
         <a

@@ -42,6 +42,7 @@ export const Sidebar: React.FC = () => {
           { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
           { label: 'Cases & Records', icon: Briefcase, href: '/cases', badge: 'Phase 3' },
           { label: 'Upload Evidence', icon: Upload, href: '/upload', badge: 'Phase 4' },
+          { label: 'OCR & Search', icon: Search, href: '/search', badge: 'Phase 5' },
           { label: 'Users & RBAC', icon: Users, href: '/users', badge: 'Admin' },
           { label: 'Departments', icon: Building2, href: '/departments' },
           { label: 'Audit Ledger', icon: ScrollText, href: '/audit', badge: 'Phase 2' },
@@ -65,6 +66,7 @@ export const Sidebar: React.FC = () => {
       case UserRole.COURT_OFFICER:
         return [
           { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
+          { label: 'Search Records', icon: Search, href: '/search', badge: 'Phase 5' },
           { label: 'Shared with Court', icon: Share2, href: '/shares', badge: 'Phase 6' },
           { label: 'Verify Export', icon: FileCheck2, href: '/verify', badge: 'BSA 2023' },
         ];
@@ -72,6 +74,7 @@ export const Sidebar: React.FC = () => {
         return [
           { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
           { label: 'Cases Archive', icon: Briefcase, href: '/cases', badge: 'Phase 3' },
+          { label: 'OCR & Search', icon: Search, href: '/search', badge: 'Phase 5' },
           { label: 'Records Vault', icon: Archive, href: '/records', badge: 'Phase 4' },
           { label: 'Retention Policies', icon: Clock, href: '/retention', badge: 'Phase 8' },
           { label: 'Classification Rules', icon: Layers, href: '/classification' },
@@ -81,6 +84,7 @@ export const Sidebar: React.FC = () => {
           { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
           { label: 'Audit Log Ledger', icon: ScrollText, href: '/audit', badge: 'Phase 2' },
           { label: 'Case Inspection', icon: Briefcase, href: '/cases', badge: 'Phase 3' },
+          { label: 'OCR & Search', icon: Search, href: '/search', badge: 'Phase 5' },
           {
             label: 'Chain Integrity Report',
             icon: ShieldAlert,
