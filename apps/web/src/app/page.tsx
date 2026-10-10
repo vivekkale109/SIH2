@@ -73,7 +73,7 @@ export default function HomePage() {
         <div>
           <div className="flex items-center space-x-2">
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-success/15 text-success font-mono uppercase">
-              Phase 6 Operational
+              Phase 7 Operational
             </span>
             <span className="text-xs text-muted">• Smart India Hackathon 2026 (PS ID 26190)</span>
           </div>
@@ -83,12 +83,13 @@ export default function HomePage() {
           <p className="text-muted text-sm mt-1 max-w-2xl">
             Case-centric legal evidence platform with granular RBAC/ABAC, SHA-256 integrity,
             append-only hash-chained ledger, Tesseract OCR search, time-limited controlled sharing,
-            and dynamic forensic watermarking.
+            dynamic forensic watermarking, and Ed25519 digitally signed BSA 2023 §61–63 verifiable
+            exports.
           </p>
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="success" icon={<ShieldCheck className="w-3.5 h-3.5" />}>
-            Sharing & Watermarks Active
+            Signed Exports & Verifier Active
           </Badge>
         </div>
       </div>
@@ -251,29 +252,27 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Next Step: Phase 6 Banner */}
+      {/* Next Step: Phase 8 Banner */}
       <div className="bg-surface-alt border border-border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-semibold text-primary uppercase tracking-wider">
             Up Next
           </span>
           <h3 className="text-base font-bold text-text mt-0.5">
-            Phase 6: Controlled Sharing and Dynamic Watermarking
+            Phase 8: Dashboards, Audit Log Viewer, and UX Polish
           </h3>
           <p className="text-xs text-muted mt-1">
-            ShareGrant model with view-only vs download scopes, dynamic forensic watermarking (user,
-            timestamp, case ID), and time-limited access enforcement.
+            Role-specific dashboards, comprehensive audit log filters (user, action, date, entity),
+            chain integrity reporting, and Records Manager retention settings.
           </p>
         </div>
-        <a
-          href="http://localhost:4000/api/docs"
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href="/verify"
           className="inline-flex items-center justify-center space-x-2 bg-primary text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors shrink-0"
         >
-          <span>Explore Swagger API Docs</span>
+          <span>Launch Evidence Verifier</span>
           <ArrowRight className="h-4 w-4" />
-        </a>
+        </Link>
       </div>
     </div>
   );

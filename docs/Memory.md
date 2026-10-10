@@ -25,14 +25,14 @@
 
 ## 2. Current Status
 
-| Item                    | Value                                                                                                             |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **Current phase**       | Phase 6 — Controlled Sharing and Watermarking (Completed, ready for Phase 7)                                      |
-| **Current branch**      | `feature/phase-6-sharing-watermark`                                                                               |
-| **Last completed task** | Complete Phase 6 implementation (ShareGrant model, PDF/image/text forensic watermarking, ABAC access, UI & tests) |
-| **In progress**         | Finalize Phase 6 PR, tag v0.7.0, initiate Phase 7 (Signed Exports and Verifier CLI / BSA 2023 §61–63)             |
-| **Blocked by**          | _nothing_                                                                                                         |
-| **Last updated**        | 2026-10-10 by Antigravity                                                                                         |
+| Item                    | Value                                                                                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Current phase**       | Phase 7 — Signed Exports and Verifier (Completed, ready for Phase 8)                                                                          |
+| **Current branch**      | `feature/phase-7-signed-exports`                                                                                                              |
+| **Last completed task** | Complete Phase 7 implementation (Ed25519 signed exports, BSA 2023 §61–63 certificates, standalone verifier CLI, web verify portal, and tests) |
+| **In progress**         | Finalize Phase 7 PR, tag v0.8.0, initiate Phase 8 (Role Dashboards, Audit Log Viewer, Integrity UI, and Polish)                               |
+| **Blocked by**          | _nothing_                                                                                                                                     |
+| **Last updated**        | 2026-10-10 by Antigravity                                                                                                                     |
 
 ---
 
@@ -47,7 +47,7 @@
 | 4     | Upload and Versioning        | ✅ Done        | `feature/phase-4-upload-versioning` | `v0.5.0` | 2026-09-30 |
 | 5     | OCR, Classification, Search  | ✅ Done        | `feature/phase-5-ocr-search`        | `v0.6.0` | 2026-10-10 |
 | 6     | Sharing and Watermarking     | ✅ Done        | `feature/phase-6-sharing-watermark` | `v0.7.0` | 2026-10-10 |
-| 7     | Signed Exports and Verifier  | ⬜ Not started |                                     |          |            |
+| 7     | Signed Exports and Verifier  | ✅ Done        | `feature/phase-7-signed-exports`    | `v0.8.0` | 2026-10-10 |
 | 8     | Dashboards, Audit UI, Polish | ⬜ Not started |                                     |          |            |
 | 9     | Hardening and Demo           | ⬜ Not started |                                     |          |            |
 
@@ -57,20 +57,21 @@ Legend: ⬜ Not started · 🟨 In progress · ✅ Done · ⛔ Blocked
 
 ## 4. Key Decisions (Decision Log)
 
-| #   | Date       | Decision                                    | Reason                                                                             | Alternatives                                              |
-| --- | ---------- | ------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| D1  | _2026_     | Modular monolith (NestJS)                   | Simple pilot deployment, clear boundaries                                          | Microservices (too heavy for unit-level)                  |
-| D2  | _2026_     | "Blockchain" = internal hash-chained ledger | Tamper-evidence without a public chain                                             | Public blockchain (out of scope)                          |
-| D3  | _2026_     | PostgreSQL FTS for search initially         | Fewer moving parts                                                                 | OpenSearch/Meilisearch later                              |
-| D4  | _2026_     | Rule-based classification first             | Limited labeled data                                                               | ML models later via a pluggable interface                 |
-| D5  | _2026_     | Redis + BullMQ for jobs _(assumption)_      | Mature and simple                                                                  | RabbitMQ                                                  |
-| D6  | _2026_     | ClamAV for malware scan _(assumption)_      | Open source, self-hosted                                                           | Commercial AV                                             |
-| D7  | _2026_     | Ed25519 for export signing _(assumption)_   | Small, fast, modern                                                                | RSA-PSS                                                   |
-| D8  | 2026-09-30 | MinIO API mapped to host port 9002          | Avoid conflict with existing local services on 9000 (Portainer)                    | Stop existing service                                     |
-| D9  | 2026-09-30 | ABAC Policy evaluation model                | Case-level clearance via department, role, direct assignment, and active shares    | Pure RBAC (insufficient for multi-department isolation)   |
-| D10 | 2026-09-30 | Append-only document versioning with ClamAV | Prevent overwrites; compute SHA-256 on byte streams; detect EICAR virus patterns   | Overwriting files in storage                              |
-| D11 | 2026-10-10 | Tesseract OCR, Sharp, PostgreSQL tsvector   | Self-hosted pipeline, BullMQ retries, rule classifier, ABAC-filtered FTS           | External cloud OCR APIs                                   |
-| D12 | 2026-10-10 | Dynamic forensic watermarking (Sharp + PDF) | Stream-level forensic stamping with user email, badge, UTC time, case ref, & class | Permanent client-side watermarks or un-watermarked copies |
+| #   | Date       | Decision                                    | Reason                                                                             | Alternatives                                               |
+| --- | ---------- | ------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| D1  | _2026_     | Modular monolith (NestJS)                   | Simple pilot deployment, clear boundaries                                          | Microservices (too heavy for unit-level)                   |
+| D2  | _2026_     | "Blockchain" = internal hash-chained ledger | Tamper-evidence without a public chain                                             | Public blockchain (out of scope)                           |
+| D3  | _2026_     | PostgreSQL FTS for search initially         | Fewer moving parts                                                                 | OpenSearch/Meilisearch later                               |
+| D4  | _2026_     | Rule-based classification first             | Limited labeled data                                                               | ML models later via a pluggable interface                  |
+| D5  | _2026_     | Redis + BullMQ for jobs _(assumption)_      | Mature and simple                                                                  | RabbitMQ                                                   |
+| D6  | _2026_     | ClamAV for malware scan _(assumption)_      | Open source, self-hosted                                                           | Commercial AV                                              |
+| D7  | _2026_     | Ed25519 for export signing _(assumption)_   | Small, fast, modern                                                                | RSA-PSS                                                    |
+| D8  | 2026-09-30 | MinIO API mapped to host port 9002          | Avoid conflict with existing local services on 9000 (Portainer)                    | Stop existing service                                      |
+| D9  | 2026-09-30 | ABAC Policy evaluation model                | Case-level clearance via department, role, direct assignment, and active shares    | Pure RBAC (insufficient for multi-department isolation)    |
+| D10 | 2026-09-30 | Append-only document versioning with ClamAV | Prevent overwrites; compute SHA-256 on byte streams; detect EICAR virus patterns   | Overwriting files in storage                               |
+| D11 | 2026-10-10 | Tesseract OCR, Sharp, PostgreSQL tsvector   | Self-hosted pipeline, BullMQ retries, rule classifier, ABAC-filtered FTS           | External cloud OCR APIs                                    |
+| D12 | 2026-10-10 | Dynamic forensic watermarking (Sharp + PDF) | Stream-level forensic stamping with user email, badge, UTC time, case ref, & class | Permanent client-side watermarks or un-watermarked copies  |
+| D13 | 2026-10-10 | Ed25519 signing & BSA 2023 §61–63 packaging | Bit-exact canonical JSON digests, air-gapped court verifiability & non-repudiation | Unsigned archive packages or cloud-only validation portals |
 
 > Add new decisions at the bottom. Never delete old ones. Mark superseded ones instead.
 
@@ -122,6 +123,38 @@ Legend: ⬜ Not started · 🟨 In progress · ✅ Done · ⛔ Blocked
 - Next steps:
 - Notes for next session:
 ```
+
+### 2026-10-10 — Phase 7 Signed Exports and Standalone Verifier (BSA 2023 §61–63) Implementation
+
+- Phase / Branch: Phase 7 / `feature/phase-7-signed-exports`
+- Done:
+  - Built court-ready evidence export builder (`ExportService`, `ExportController`):
+    - Re-authentication security check (`passwordConfirm`) with 15-minute sliding auth window enforcement
+    - ABAC clearance validation (`PolicyService.canExportCase`) restricting export creation to authorized roles and assigned case members
+    - Streaming byte-level SHA-256 validation against live MinIO object storage prior to inclusion
+    - Deterministic canonical JSON manifest serializer (`canonicalJsonStringify`)
+    - Ed25519 elliptic curve digital signature signing (`SignerService`) with PEM public key export
+    - Statutory Electronic Evidence Certificate generation (`CertificateService`) strictly aligned with Sections 61, 62 & 63 of Bharatiya Sakshya Adhiniyam, 2023 (BSA 2023 Act No. 47 of 2023)
+    - Full chronological audit ledger extraction for case and exhibits
+    - Package archiving into ZIP containing `manifest.json`, `certificate_BSA_2023.txt`, `signature.sig`, `pubkey.pem`, and exhibits in `documents/`
+    - Stored package in MinIO bucket under `exports/` and logged `EXPORT_CREATED` and `EXPORT_DOWNLOADED` on the immutable audit ledger
+  - Built standalone offline evidence verifier package (`packages/verifier`):
+    - Full offline verification library (`verifyExportPackage`): validates canonical manifest SHA-256 digest, checks Ed25519 digital signature, recomputes SHA-256 hashes of all embedded exhibits, and validates unbroken audit chain links
+    - Standalone air-gapped CLI (`npx @sdms/verifier` / `sdms-verify`): formatted court report, JSON output mode (`--json`), and optional trusted public key override (`--key`)
+  - Built web frontend interfaces:
+    - Court Evidence Package Verifier page (`/verify`): drag-and-drop package ingestion, real-time cryptographic verdict banner (VALID vs TAMPERED), 3-pillar cryptographic status cards, individual exhibit match table, and styled BSA 2023 §63 certificate viewer with one-click copy
+    - Investigation Case page (`/cases/[id]`): Added "Signed Export" header action, "Signed Exports" tab displaying historical packages, SHA-256 copy action, and direct package download
+    - Export generation modal (`ExportModal`): exhibit selection toggles, statutory declarant notice, and password re-authentication confirmation
+    - Exports overview page (`/exports`) and role-based navigation links in Sidebar
+  - Thorough testing:
+    - Unit tests: 19 test suites (118 tests) passing at 100%
+    - E2E tests: 8 test suites (64 tests) passing at 100%, including tampered exhibit and tampered manifest detection
+    - Standalone CLI execution verified against generated test packages
+- Files touched: `apps/api/src/modules/export/*`, `packages/verifier/*`, `packages/shared-types/*`, `apps/web/src/app/verify/*`, `apps/web/src/app/exports/*`, `apps/web/src/components/export/*`, `apps/web/src/app/cases/[id]/*`, `apps/web/src/components/layout/Sidebar.tsx`, `apps/web/src/app/page.tsx`, `docs/Phases.md`, `docs/Memory.md`
+- Decisions: D13 — Ed25519 elliptic curve signing with canonical JSON hashing and BSA 2023 §61–63 evidence certificate packaging for offline tamper-evident court admissibility and air-gapped forensic verification.
+- Tests: Unit tests (118/118 pass), E2E tests (64/64 pass), monorepo build (pass)
+- Next steps: Finalize Phase 7 PR into `develop`, tag release `v0.8.0`, and initiate Phase 8 (Role-specific dashboards, Audit Log viewer, Integrity UI, and Polish).
+- Notes for next session: Phase 8 will implement role-tailored dashboards (Investigator, Prosecutor, Court Officer, Auditor), full-featured audit ledger log explorer with multi-field filtering, and integrity health monitoring.
 
 ### 2026-10-10 — Phase 6 Controlled Sharing and Forensic Watermarking Implementation
 

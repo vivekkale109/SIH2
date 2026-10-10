@@ -34,6 +34,7 @@ import {
   Share2,
   Eye,
   Trash2,
+  FileCheck2,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -50,9 +51,11 @@ import {
   DocumentStatus,
   ShareScope,
   ShareGrantDetailSummary,
+  ExportPackageSummary,
 } from '@sdms/shared-types';
 import { ShareModal } from '@/components/sharing/ShareModal';
 import { WatermarkPreviewModal } from '@/components/sharing/WatermarkPreviewModal';
+import { ExportModal } from '@/components/export/ExportModal';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -224,7 +227,7 @@ export default function CaseDetailPage({ params }: PageProps) {
   const [timeline, setTimeline] = useState<AuditLedgerEntry[]>([]);
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'documents' | 'members' | 'timeline' | 'shares'
+    'overview' | 'documents' | 'members' | 'timeline' | 'shares' | 'exports'
   >('overview');
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -261,6 +264,11 @@ export default function CaseDetailPage({ params }: PageProps) {
     caseNumber?: string;
   } | null>(null);
   const [revokingShareId, setRevokingShareId] = useState<string | null>(null);
+
+  // Signed Export states (Phase 7)
+  const [caseExports, setCaseExports] = useState<ExportPackageSummary[]>([]);
+  const [loadingExports, setLoadingExports] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // New version upload state
   const [isUploadVersionOpen, setIsUploadVersionOpen] = useState(false);
@@ -368,6 +376,51 @@ export default function CaseDetailPage({ params }: PageProps) {
       alert('Network error while revoking share');
     } finally {
       setRevokingShareId(null);
+    }
+  };
+
+  // Fetch signed exports for this case (Phase 7)
+  const fetchCaseExports = useCallback(async () => {
+    if (!token || !caseId) return;
+    setLoadingExports(true);
+    try {
+      const res = await fetch(`/api/v1/cases/${caseId}/exports`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCaseExports(data);
+      }
+    } catch {
+      // fallback
+    } finally {
+      setLoadingExports(false);
+    }
+  }, [token, caseId]);
+
+  useEffect(() => {
+    fetchCaseExports();
+  }, [fetchCaseExports]);
+
+  const handleDownloadExport = async (pkgId: string) => {
+    if (!token || !caseItem) return;
+    try {
+      const res = await fetch(`/api/v1/exports/${pkgId}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Download request failed');
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `SDMS_EXPORT_${caseItem.caseNumber}_${pkgId.slice(0, 8)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      alert(`Download failed: ${err.message}`);
     }
   };
 
@@ -822,6 +875,15 @@ export default function CaseDetailPage({ params }: PageProps) {
                 <span>Share Case</span>
               </button>
             )}
+
+            <button
+              onClick={() => setIsExportModalOpen(true)}
+              className="px-3.5 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-xs"
+              title="Generate a court-ready signed evidence export package (BSA 2023 §61–63)"
+            >
+              <FileCheck2 className="w-3.5 h-3.5" />
+              <span>Signed Export</span>
+            </button>
           </div>
         </div>
 
@@ -917,6 +979,18 @@ export default function CaseDetailPage({ params }: PageProps) {
         >
           <Share2 className="w-4 h-4" />
           Controlled Shares ({caseShares.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('exports')}
+          className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition whitespace-nowrap ${
+            activeTab === 'exports'
+              ? 'bg-primary/10 text-primary border border-primary/20'
+              : 'text-muted hover:text-text'
+          }`}
+        >
+          <FileCheck2 className="w-4 h-4" />
+          Signed Exports ({caseExports.length})
         </button>
       </div>
 
@@ -1549,6 +1623,151 @@ export default function CaseDetailPage({ params }: PageProps) {
         </div>
       )}
 
+      {/* Tab 6: Signed Exports (Phase 7 - BSA 2023 §61–63) */}
+      {activeTab === 'exports' && (
+        <div className="bg-surface border border-border rounded-xl p-5 space-y-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-text flex items-center gap-2">
+                <FileCheck2 className="w-4 h-4 text-primary" />
+                Court Evidence Packages & Digital Signatures
+              </h3>
+              <p className="text-xs text-muted">
+                Signed verifiable export packages with embedded manifest.json, NIST SHA-256 digests,
+                and BSA 2023 §61–63 certificates.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <Link
+                href="/verify"
+                target="_blank"
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-surface-alt hover:bg-border text-text border border-border text-xs font-semibold rounded-lg transition"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Open Verifier</span>
+              </Link>
+
+              <button
+                onClick={() => setIsExportModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-lg shadow-sm transition"
+              >
+                <FileCheck2 className="w-3.5 h-3.5" />
+                <span>Generate Signed Export</span>
+              </button>
+            </div>
+          </div>
+
+          {loadingExports ? (
+            <div className="p-8 text-center text-xs text-muted flex items-center justify-center gap-2">
+              <RefreshCw className="w-4 h-4 animate-spin text-primary" />
+              Loading signed export history...
+            </div>
+          ) : caseExports.length === 0 ? (
+            <div className="border border-dashed border-border rounded-2xl p-10 text-center bg-surface-alt/40 space-y-3">
+              <FileCheck2 className="w-8 h-8 text-muted mx-auto opacity-50" />
+              <h4 className="text-sm font-bold text-text">No Signed Exports Generated</h4>
+              <p className="text-xs text-muted max-w-sm mx-auto">
+                No court evidence export packages have been generated for this case yet. Generate a
+                package to seal attached exhibits with Ed25519 signatures and BSA 2023 certificates.
+              </p>
+              <button
+                onClick={() => setIsExportModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-lg shadow-sm transition"
+              >
+                <FileCheck2 className="w-3.5 h-3.5" />
+                <span>Generate First Signed Package</span>
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto border border-border rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-border text-[11px] font-bold text-muted uppercase tracking-wider bg-surface-alt/50">
+                    <th className="py-2.5 px-3">Package ID</th>
+                    <th className="py-2.5 px-3">Declarant Officer</th>
+                    <th className="py-2.5 px-3">Manifest SHA-256 Digest</th>
+                    <th className="py-2.5 px-3">Date Generated</th>
+                    <th className="py-2.5 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {caseExports.map((pkg) => (
+                    <tr key={pkg.id} className="hover:bg-surface-alt/40 transition">
+                      <td className="py-3 px-3 font-mono">
+                        <span className="font-semibold text-text">{pkg.id.slice(0, 13)}...</span>
+                        <div className="text-[10px] text-muted">
+                          {pkg.documentCount !== undefined
+                            ? `${pkg.documentCount} documents attached`
+                            : 'ZIP Archive'}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="font-semibold text-text">
+                          {pkg.createdBy?.fullName || pkg.createdById}
+                        </div>
+                        <div className="text-[11px] text-muted">
+                          {pkg.createdBy?.role}{' '}
+                          {pkg.createdBy?.badgeNumber ? `• ${pkg.createdBy.badgeNumber}` : ''}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 font-mono text-[11px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-primary truncate max-w-xs">{pkg.manifestHash}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void navigator.clipboard.writeText(pkg.manifestHash);
+                              setCopiedHash(pkg.id);
+                              setTimeout(() => setCopiedHash(null), 2000);
+                            }}
+                            className="text-muted hover:text-text p-0.5 rounded"
+                            title="Copy Manifest Hash"
+                          >
+                            {copiedHash === pkg.id ? (
+                              <Check className="w-3 h-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        </div>
+                        <div className="text-[10px] text-muted flex items-center gap-1 mt-0.5">
+                          <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                          <span>Ed25519 Signed</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3 font-mono text-[11px] text-muted whitespace-nowrap">
+                        {new Date(pkg.createdAt).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleDownloadExport(pkg.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded text-xs font-semibold transition"
+                            title="Download Signed ZIP Archive"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Download ZIP</span>
+                          </button>
+                          <Link
+                            href="/verify"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-surface-alt hover:bg-border text-muted hover:text-text border border-border rounded text-xs font-semibold transition"
+                            title="Verify Package in Offline Verifier"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>Verify</span>
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* MODAL 1: Cryptographic Integrity Verification Result */}
       {integrityResult && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1966,6 +2185,21 @@ export default function CaseDetailPage({ params }: PageProps) {
           mimeType={previewDoc.mimeType}
           scope={previewDoc.scope}
           caseNumber={previewDoc.caseNumber || caseItem?.caseNumber}
+        />
+      )}
+
+      {/* Court Signed Evidence Export Modal (Phase 7) */}
+      {isExportModalOpen && (
+        <ExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          caseId={caseId}
+          caseNumber={caseItem?.caseNumber || ''}
+          caseTitle={caseItem?.title || ''}
+          documents={documents}
+          onExportSuccess={() => {
+            fetchCaseExports();
+          }}
         />
       )}
     </div>

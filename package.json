@@ -11,7 +11,7 @@
     "dev:api": "npm run start:dev --workspace=@sdms/api",
     "dev:web": "npm run dev --workspace=@sdms/web",
     "build": "npm run build:packages && npm run build:apps",
-    "build:packages": "npm run build --workspace=@sdms/shared-types",
+    "build:packages": "npm run build --workspace=@sdms/shared-types && npm run build --workspace=@sdms/verifier",
     "build:apps": "npm run build:api && npm run build:web",
     "build:api": "npm run build --workspace=@sdms/api",
     "build:web": "npm run build --workspace=@sdms/web",
