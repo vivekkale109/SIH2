@@ -25,14 +25,14 @@
 
 ## 2. Current Status
 
-| Item                    | Value                                                                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Current phase**       | Phase 4 — Secure Document Upload and Versioning (Completed, ready for Phase 5)                                           |
-| **Current branch**      | `feature/phase-4-upload-versioning`                                                                                      |
-| **Last completed task** | Complete Phase 4 implementation (MinIO SSE, ClamAV malware scan, SHA-256 integrity, monotonic versioning, UI, and tests) |
-| **In progress**         | Finalize Phase 4 PR, tag v0.5.0, initiate Phase 5 (OCR, Classification and Search)                                       |
-| **Blocked by**          | _nothing_                                                                                                                |
-| **Last updated**        | 2026-09-30 by Antigravity                                                                                                |
+| Item                    | Value                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Current phase**       | Phase 5 — OCR, Classification and Search (Completed, ready for Phase 6)                                            |
+| **Current branch**      | `feature/phase-5-ocr-search`                                                                                       |
+| **Last completed task** | Complete Phase 5 implementation (BullMQ worker, Sharp preprocessing, Tesseract OCR, PostgreSQL FTS, UI, and tests) |
+| **In progress**         | Finalize Phase 5 PR, tag v0.6.0, initiate Phase 6 (Controlled Sharing and Dynamic Watermarking)                    |
+| **Blocked by**          | _nothing_                                                                                                          |
+| **Last updated**        | 2026-10-10 by Antigravity                                                                                          |
 
 ---
 
@@ -45,7 +45,7 @@
 | 2     | Audit Ledger                 | ✅ Done        | `feature/phase-2-audit-ledger`      | `v0.3.0` | 2026-09-30 |
 | 3     | Cases and ABAC               | ✅ Done        | `feature/phase-3-cases-abac`        | `v0.4.0` | 2026-09-30 |
 | 4     | Upload and Versioning        | ✅ Done        | `feature/phase-4-upload-versioning` | `v0.5.0` | 2026-09-30 |
-| 5     | OCR, Classification, Search  | ⬜ Not started |                                     |          |            |
+| 5     | OCR, Classification, Search  | ✅ Done        | `feature/phase-5-ocr-search`        | `v0.6.0` | 2026-10-10 |
 | 6     | Sharing and Watermarking     | ⬜ Not started |                                     |          |            |
 | 7     | Signed Exports and Verifier  | ⬜ Not started |                                     |          |            |
 | 8     | Dashboards, Audit UI, Polish | ⬜ Not started |                                     |          |            |
@@ -69,6 +69,7 @@ Legend: ⬜ Not started · 🟨 In progress · ✅ Done · ⛔ Blocked
 | D8  | 2026-09-30 | MinIO API mapped to host port 9002          | Avoid conflict with existing local services on 9000 (Portainer)                  | Stop existing service                                   |
 | D9  | 2026-09-30 | ABAC Policy evaluation model                | Case-level clearance via department, role, direct assignment, and active shares  | Pure RBAC (insufficient for multi-department isolation) |
 | D10 | 2026-09-30 | Append-only document versioning with ClamAV | Prevent overwrites; compute SHA-256 on byte streams; detect EICAR virus patterns | Overwriting files in storage                            |
+| D11 | 2026-10-10 | Tesseract OCR, Sharp, PostgreSQL tsvector   | Self-hosted pipeline, BullMQ retries, rule classifier, ABAC-filtered FTS         | External cloud OCR APIs                                 |
 
 > Add new decisions at the bottom. Never delete old ones. Mark superseded ones instead.
 
@@ -120,6 +121,26 @@ Legend: ⬜ Not started · 🟨 In progress · ✅ Done · ⛔ Blocked
 - Next steps:
 - Notes for next session:
 ```
+
+### 2026-10-10 — Phase 5 OCR, Classification, and Search Implementation
+
+- Phase / Branch: Phase 5 / `feature/phase-5-ocr-search`
+- Done:
+  - Built BullMQ job queue infrastructure (`OcrQueue`, `OcrProcessor`) connected to Redis for resilient asynchronous document OCR and background metadata processing
+  - Implemented high-performance image preprocessing pipeline (`ImagePreprocessingService`) leveraging Sharp for deskewing, denoising, grayscale normalization, and adaptive thresholding
+  - Integrated Tesseract.js OCR engine and PDF text parser (`OcrService`) extracting full-text transcripts with confidence scoring
+  - Implemented extensible `Classifier` interface and rule-based classifier (`RuleBasedClassifierService`) detecting FIRs, Charge Sheets, Witness Statements, Seizure Memos, Forensic Reports, and Identity Documents with weighted keyword matching and regex pattern scoring
+  - Developed regex entity and metadata extractor (`MetadataExtractorService`) extracting incident dates, FIR/case registration numbers, named entities, and statutory legal sections
+  - Configured PostgreSQL Full-Text Search (FTS) using `tsvector` generated column (`fts_vector`) and GIN indexes across document title, case title, case number, and OCR extracted text
+  - Built search service and controller (`SearchService`, `SearchController`, `GET /api/v1/search`) enforcing ABAC clearance rules (role, department, direct case assignment, active shares) and yielding ranked results with contextual highlights and metadata snippets
+  - Implemented human verification endpoints (`GET /api/v1/documents/:id/ocr`, `POST /api/v1/documents/:id/ocr/retry`, `PATCH /api/v1/documents/:id/ocr/verify`) logging `OCR_PROCESSED`, `OCR_VERIFIED`, and `CLASSIFICATION_UPDATED` into the audit ledger
+  - Built dedicated Next.js search and verification UI (`/search`): live query bar, fuzzy/FTS toggle, classification and type facet filters, match score badges, OCR confidence indicators, and human transcript verification drawer modal
+  - Authored comprehensive test suites: 14 unit test suites (91 tests) and 6 e2e test suites (49 tests) passing with 100% test success and zero lint/type errors
+- Files touched: `apps/api/src/modules/ocr/*`, `apps/api/src/modules/search/*`, `apps/api/prisma/schema.prisma`, `apps/api/test/search-ocr.e2e-spec.ts`, `packages/shared-types/src/models.ts`, `apps/web/src/app/search/page.tsx`, `apps/web/src/components/layout/Sidebar.tsx`, `apps/web/src/app/page.tsx`, `docs/Phases.md`, `docs/Memory.md`
+- Decisions: D11 — BullMQ asynchronous pipeline, Sharp preprocessing, Tesseract.js OCR, rule-based legal classifier, and PostgreSQL tsvector/GIN indexing for secure on-premise document search.
+- Tests: Unit tests (91/91 pass), e2e tests (49/49 pass), lint (0 errors/warnings), full monorepo build (pass)
+- Next steps: Merge `feature/phase-5-ocr-search` into `develop`, tag `v0.6.0`, and initiate Phase 6 (Controlled Sharing and Dynamic Forensic Watermarking).
+- Notes for next session: Phase 6 will implement the `ShareGrant` model with view-only vs download scopes, dynamic forensic watermarking (user, timestamp, case ID), time-limited access enforcement, and court/external party portal.
 
 ### 2026-09-30 — Phase 4 Secure Document Upload and Versioning Implementation
 

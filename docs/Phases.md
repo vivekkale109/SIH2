@@ -139,15 +139,15 @@
 
 **Tasks**
 
-- [ ] BullMQ queues and worker process
-- [ ] Image preprocessing (deskew, denoise, threshold)
-- [ ] Tesseract OCR worker; store `OcrResult` with confidence
-- [ ] Rule-based classifier (keywords and regex for FIR, charge sheet, statement, and others)
-- [ ] Pluggable `Classifier` interface for future ML models
-- [ ] Metadata extraction (dates, case numbers, names, with confidence)
-- [ ] Human verification UI (edit OCR and metadata, then mark verified)
-- [ ] PostgreSQL FTS (tsvector plus GIN index); search endpoint with ABAC filtering
-- [ ] UI: search page, filters, highlighted snippets
+- [x] BullMQ queues and worker process
+- [x] Image preprocessing (deskew, denoise, threshold)
+- [x] Tesseract OCR worker; store `OcrResult` with confidence
+- [x] Rule-based classifier (keywords and regex for FIR, charge sheet, statement, and others)
+- [x] Pluggable `Classifier` interface for future ML models
+- [x] Metadata extraction (dates, case numbers, names, with confidence)
+- [x] Human verification UI (edit OCR and metadata, then mark verified)
+- [x] PostgreSQL FTS (tsvector plus GIN index); search endpoint with ABAC filtering
+- [x] UI: search page, filters, highlighted snippets
 
 **Exit criteria**
 
