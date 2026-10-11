@@ -175,10 +175,8 @@ async function main(): Promise<void> {
   console.log('\n✅ Load benchmarks completed successfully.');
 }
 
-if (require.main === module) {
-  main().catch((e) => {
-    // eslint-disable-next-line no-console
-    console.error('Load testing error:', e);
-    process.exit(1);
-  });
-}
+main().catch((e) => {
+  // eslint-disable-next-line no-console
+  console.error('Load testing error:', e);
+  process.exit(1);
+});
