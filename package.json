@@ -20,6 +20,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "type-check": "npm run type-check --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:load": "ts-node infra/scripts/load-test.ts",
     "prepare": "husky"
   },
   "devDependencies": {

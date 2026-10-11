@@ -23,6 +23,7 @@ coverage/
 
 # Uploads and Temp
 uploads/
+backups/
 tmp/
 temp/
 *.log

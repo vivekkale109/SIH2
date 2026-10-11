@@ -224,15 +224,15 @@
 
 **Tasks**
 
-- [ ] Security review against OWASP Top 10 checklist
-- [ ] Dependency audit (`npm audit`), fix critical issues
-- [ ] Load test search and upload
-- [ ] Backup and restore procedure tested
-- [ ] Production Docker Compose with TLS proxy, non-root containers
-- [ ] Deployment hardening checklist completed
-- [ ] Demo dataset (fake), demo script, and screenshots
-- [ ] Final docs: README, deployment guide, user guide
-- [ ] Release `v1.0.0`
+- [x] Security review against OWASP Top 10 checklist
+- [x] Dependency audit (`npm audit`), fix critical issues
+- [x] Load test search and upload
+- [x] Backup and restore procedure tested
+- [x] Production Docker Compose with TLS proxy, non-root containers
+- [x] Deployment hardening checklist completed
+- [x] Demo dataset (fake), demo script, and screenshots
+- [x] Final docs: README, deployment guide, user guide
+- [x] Release `v1.0.0`
 
 **Exit criteria**
 

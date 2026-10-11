@@ -1,0 +1,130 @@
+name: sdms-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sdms-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sdms_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sdms_password}
+      POSTGRES_DB: ${POSTGRES_DB:-sdms_db}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-sdms_user} -d ${POSTGRES_DB:-sdms_db}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sdms-internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: sdms-redis-prod
+    restart: always
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sdms-internal
+
+  minio:
+    image: minio/minio:latest
+    container_name: sdms-minio-prod
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_prod_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sdms-internal
+
+  clamav:
+    image: clamav/clamav:latest
+    container_name: sdms-clamav-prod
+    restart: always
+    environment:
+      CLAMAV_NO_FRESHCLAM: 'false'
+    networks:
+      - sdms-internal
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: sdms-api-prod
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sdms_user}:${POSTGRES_PASSWORD:-sdms_password}@postgres:5432/${POSTGRES_DB:-sdms_db}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: 'false'
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: 3310
+    networks:
+      - sdms-internal
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: sdms-web-prod
+    restart: always
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://api:4000
+    networks:
+      - sdms-internal
+
+  nginx:
+    image: nginx:alpine
+    container_name: sdms-nginx-prod
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./infra/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - web
+      - api
+    networks:
+      - sdms-internal
+
+networks:
+  sdms-internal:
+    driver: bridge
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
+  minio_prod_data:
